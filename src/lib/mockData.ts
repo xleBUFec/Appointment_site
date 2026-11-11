@@ -1,0 +1,88 @@
+import { Barber, Service } from '../types';
+
+export const INITIAL_BARBERS: Barber[] = [
+  {
+    id: 'barber-1',
+    name: 'Александр "Клык" Романов',
+    role: 'Шеф-барбер',
+    avatar_url: 'https://images.unsplash.com/photo-1506794778202-cad84cf45f1d?auto=format&fit=crop&w=400&q=80',
+    experience: '10 лет опыта',
+    rating: 4.98,
+    bio: 'Специалист по классическим британским стрижкам и королевскому бритью опасной бритвой.',
+  },
+  {
+    id: 'barber-2',
+    name: 'Максим Воронов',
+    role: 'Топ-барбер',
+    avatar_url: 'https://images.unsplash.com/photo-1507003211169-0a1dd7228f2d?auto=format&fit=crop&w=400&q=80',
+    experience: '6 лет опыта',
+    rating: 4.95,
+    bio: 'Мастер идеальных фейдов любой сложности, моделирования бороды и текстурных укладок.',
+  },
+  {
+    id: 'barber-3',
+    name: 'Денис Громов',
+    role: 'Барбер-стилист',
+    avatar_url: 'https://images.unsplash.com/photo-1500648767791-00dcc994a43e?auto=format&fit=crop&w=400&q=80',
+    experience: '4 года опыта',
+    rating: 4.92,
+    bio: 'Современные тренды, эстетика мужского стиля и комплексный уход за волосами.',
+  },
+];
+
+export const INITIAL_SERVICES: Service[] = [
+  {
+    id: 'service-1',
+    title: 'Классическая мужская стрижка',
+    description: 'Мытье головы, персональная стрижка ножницами и машинкой, укладка премиум стайлингом.',
+    price: 2500,
+    duration_min: 50,
+    category: 'hair',
+    popular: true,
+  },
+  {
+    id: 'service-2',
+    title: 'Моделирование бороды и усов',
+    description: 'Четкие контуры, распаривание горячим компрессом, уход органическими маслами.',
+    price: 1800,
+    duration_min: 40,
+    category: 'beard',
+    popular: true,
+  },
+  {
+    id: 'service-3',
+    title: 'Комплекс "Шеф": Стрижка + Борода',
+    description: 'Полное преображение: стрижка волос, моделирование бороды и бритье шейной зоны опасным лезвием.',
+    price: 3800,
+    duration_min: 75,
+    category: 'combo',
+    popular: true,
+  },
+  {
+    id: 'service-4',
+    title: 'Королевское бритье опасной бритвой',
+    description: 'Традиционный ритуал: распаривающие полотенца, пена из барсучьего помазка и холодный компресс.',
+    price: 2200,
+    duration_min: 45,
+    category: 'beard',
+    popular: false,
+  },
+  {
+    id: 'service-5',
+    title: 'Премиум СПА-уход для лица',
+    description: 'Очищающая маска с вулканической глиной, распаривание, массаж лица и сыворотка.',
+    price: 1600,
+    duration_min: 30,
+    category: 'spa',
+    popular: false,
+  },
+  {
+    id: 'service-6',
+    title: 'Камуфляж седины волос и бороды',
+    description: 'Естественное тонирование седых волос без эффекта окрашенности за 15 минут.',
+    price: 1500,
+    duration_min: 30,
+    category: 'hair',
+    popular: false,
+  },
+];
