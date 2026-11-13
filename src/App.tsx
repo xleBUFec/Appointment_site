@@ -1,6 +1,13 @@
 import React, { useState, useEffect, useRef } from 'react';
-import { Barber, Service, Booking } from './types';
-import { fetchBarbers, fetchServices, createBooking, getSavedSupabaseConfig } from './lib/supabase';
+import { Barber, Service, Booking, SiteSettings, UserProfile } from './types';
+import { 
+  fetchBarbers, 
+  fetchServices, 
+  createBooking, 
+  getSavedSupabaseConfig, 
+  fetchSiteSettings, 
+  getActiveUser 
+} from './lib/supabase';
 import { Navbar } from './components/Navbar';
 import { Hero } from './components/Hero';
 import { ServiceSelector } from './components/ServiceSelector';
@@ -9,12 +16,14 @@ import { DateTimeSelector } from './components/DateTimeSelector';
 import { BookingForm } from './components/BookingForm';
 import { BookingSuccessModal } from './components/BookingSuccessModal';
 import { SupabaseSettingsModal } from './components/SupabaseSettingsModal';
-import { AdminBookingsView } from './components/AdminBookingsView';
-import { Scissors, CheckCircle, MapPin, Phone, Clock, Globe, Send, ShieldCheck } from 'lucide-react';
+import { AdminDashboard } from './components/admin/AdminDashboard';
+import { Scissors, CheckCircle, MapPin, Phone, Clock, Globe, Send, ShieldCheck, Sparkles } from 'lucide-react';
 
 export function App() {
   const [services, setServices] = useState<Service[]>([]);
   const [barbers, setBarbers] = useState<Barber[]>([]);
+  const [settings, setSettings] = useState<SiteSettings | null>(null);
+  const [currentUser, setCurrentUser] = useState<UserProfile>(getActiveUser());
   const [loadingInitial, setLoadingInitial] = useState(true);
   const [isSupabaseConnected, setIsSupabaseConnected] = useState(false);
 
@@ -39,14 +48,23 @@ export function App() {
     setLoadingInitial(true);
     const { url, anonKey } = getSavedSupabaseConfig();
     setIsSupabaseConnected(Boolean(url && anonKey));
+    setCurrentUser(getActiveUser());
 
-    const [barbersRes, servicesRes] = await Promise.all([
+    const [barbersRes, servicesRes, settingsRes] = await Promise.all([
       fetchBarbers(),
       fetchServices(),
+      fetchSiteSettings(),
     ]);
 
     setBarbers(barbersRes.data);
     setServices(servicesRes.data);
+    setSettings(settingsRes);
+    
+    // Apply dynamic SEO title
+    if (settingsRes?.seo_title) {
+      document.title = settingsRes.seo_title;
+    }
+
     setLoadingInitial(false);
   };
 
@@ -89,13 +107,21 @@ export function App() {
       });
 
       setConfirmedBooking(res.booking);
-      // Reset form
       setStep(1);
     } catch (e) {
       console.error('Booking submission failed:', e);
     } finally {
       setIsSubmitting(false);
     }
+  };
+
+  const handleRepeatBooking = (serviceTitle: string, barberTitle: string) => {
+    const srv = services.find(s => s.title === serviceTitle) || services[0];
+    const brb = barbers.find(b => b.name === barberTitle) || null;
+    setSelectedService(srv);
+    setSelectedBarber(brb);
+    setStep(3);
+    scrollToBooking();
   };
 
   const stepsHeader = [
@@ -111,13 +137,18 @@ export function App() {
       {/* Navigation */}
       <Navbar
         isSupabaseConnected={isSupabaseConnected}
+        currentUser={currentUser}
+        settings={settings}
         onOpenSettings={() => setIsSettingsOpen(true)}
-        onOpenAdmin={() => setIsAdminOpen(true)}
+        onOpenAdmin={() => {
+          setCurrentUser(getActiveUser());
+          setIsAdminOpen(true);
+        }}
         onScrollToBooking={scrollToBooking}
       />
 
       {/* Hero Section */}
-      <Hero onStartBooking={scrollToBooking} />
+      <Hero settings={settings} onStartBooking={scrollToBooking} />
 
       {/* Main Booking Container */}
       <main ref={bookingSectionRef} className="flex-1 max-w-5xl w-full mx-auto px-4 sm:px-6 lg:px-8 py-16">
@@ -247,7 +278,7 @@ export function App() {
             <div className="text-xs text-[#8b949e] space-y-1.5">
               <p className="flex items-center gap-2">
                 <MapPin className="w-3.5 h-3.5 text-[#c59b27]" />
-                <span>г. Москва, ул. Большая Дмитровка, 12</span>
+                <span>{settings?.address || 'г. Москва, ул. Большая Дмитровка, 12'}</span>
               </p>
               <p>Метро: Театральная / Охотный ряд</p>
             </div>
@@ -258,9 +289,9 @@ export function App() {
             <div className="text-xs text-[#8b949e] space-y-1.5">
               <p className="flex items-center gap-2">
                 <Clock className="w-3.5 h-3.5 text-[#c59b27]" />
-                <span>Понедельник — Воскресенье</span>
+                <span>{settings?.work_hours || '10:00 — 22:00 ежедневно'}</span>
               </p>
-              <p>С 10:00 до 22:00 без выходных</p>
+              <p>Без перерывов и выходных</p>
             </div>
           </div>
 
@@ -269,11 +300,11 @@ export function App() {
             <div className="text-xs text-[#8b949e] space-y-1.5">
               <p className="flex items-center gap-2">
                 <Phone className="w-3.5 h-3.5 text-[#c59b27]" />
-                <span>+7 (495) 123-45-67</span>
+                <a href={`tel:${settings?.phone}`} className="hover:underline">{settings?.phone || '+7 (495) 123-45-67'}</a>
               </p>
               <p className="flex items-center gap-2 text-[#c59b27]">
                 <Send className="w-3.5 h-3.5" />
-                <span>Telegram: @blade_barbershop</span>
+                <span>Telegram: {settings?.telegram || '@blade_barbershop'}</span>
               </p>
             </div>
           </div>
@@ -286,8 +317,8 @@ export function App() {
             <span className="cursor-pointer hover:text-[#f8f5ee]" onClick={() => setIsSettingsOpen(true)}>
               Настройка базы Supabase
             </span>
-            <span className="cursor-pointer hover:text-[#f8f5ee]" onClick={() => setIsAdminOpen(true)}>
-              Журнал записей
+            <span className="cursor-pointer text-[#c59b27] hover:underline" onClick={() => setIsAdminOpen(true)}>
+              Панель управления & Кабинет
             </span>
           </div>
         </div>
@@ -311,10 +342,11 @@ export function App() {
         onConfigUpdated={loadData}
       />
 
-      <AdminBookingsView
+      <AdminDashboard
         isOpen={isAdminOpen}
         onClose={() => setIsAdminOpen(false)}
         isSupabaseConnected={isSupabaseConnected}
+        onRepeatBooking={handleRepeatBooking}
       />
 
     </div>

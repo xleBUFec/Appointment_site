@@ -1,4 +1,77 @@
-import { Barber, Service } from '../types';
+import { Barber, Service, SiteSettings, UserProfile, AuditLog } from '../types';
+
+export const INITIAL_SITE_SETTINGS: SiteSettings = {
+  hero_title: 'Искусство точной стрижки и безупречного стиля',
+  hero_subtitle: 'Мастера с многолетним опытом, традиционное бритье опасной бритвой, премиальная косметика и атмосфера настоящего мужского клуба.',
+  hero_badge: 'Премиум сервис & Мужские традиции',
+  announcement_banner: '🔥 Скидка 20% на первый визит по промокоду FIRST20 при бронировании на сайте!',
+  announcement_active: true,
+  promo_code: 'FIRST20',
+  promo_discount_percent: 20,
+  address: 'г. Москва, ул. Большая Дмитровка, д. 12',
+  phone: '+7 (495) 123-45-67',
+  work_hours: '10:00 — 22:00 ежедневно',
+  telegram: '@blade_barbershop',
+  seo_title: 'BLADE & CO. | Премиум Барбершоп в центре Москвы',
+  seo_description: 'Классические мужские стрижки, моделирование бороды и бритье опасной бритвой. Онлайн-запись 24/7.',
+  seo_keywords: 'барбершоп, мужская стрижка, борода, бритье, Москва, Большая Дмитровка',
+};
+
+export const DEMO_USERS: UserProfile[] = [
+  {
+    id: 'user-admin',
+    name: 'Константин (Владелец / Администратор)',
+    phone: '+7 999 000-00-01',
+    email: 'admin@blade-co.ru',
+    role: 'admin',
+    avatar_url: 'https://images.unsplash.com/photo-1534528741775-53994a69daeb?auto=format&fit=crop&w=400&q=80',
+  },
+  {
+    id: 'user-master-1',
+    name: 'Александр "Клык" Романов',
+    phone: '+7 999 111-22-33',
+    email: 'romanov@blade-co.ru',
+    role: 'master',
+    barber_id: 'barber-1',
+    avatar_url: 'https://images.unsplash.com/photo-1506794778202-cad84cf45f1d?auto=format&fit=crop&w=400&q=80',
+  },
+  {
+    id: 'user-client-1',
+    name: 'Иван Петров',
+    phone: '+7 999 123-45-67',
+    email: 'ivan@example.com',
+    role: 'client',
+    bonus_points: 650,
+    avatar_url: 'https://images.unsplash.com/photo-1535713875002-d1d0cf377fde?auto=format&fit=crop&w=400&q=80',
+  },
+];
+
+export const INITIAL_AUDIT_LOGS: AuditLog[] = [
+  {
+    id: 'log-1',
+    timestamp: new Date(Date.now() - 3600000 * 4).toISOString(),
+    user_name: 'Константин (Админ)',
+    user_role: 'admin',
+    action: 'Обновление цен',
+    details: 'Услуга «Комплекс Шеф» установлена цена 3 800 ₽',
+  },
+  {
+    id: 'log-2',
+    timestamp: new Date(Date.now() - 3600000 * 2).toISOString(),
+    user_name: 'Маркетолог',
+    user_role: 'admin',
+    action: 'Запуск промо-акции',
+    details: 'Включен верхний баннер с промокодом FIRST20 (-20%)',
+  },
+  {
+    id: 'log-3',
+    timestamp: new Date(Date.now() - 3600000 * 1).toISOString(),
+    user_name: 'Александр "Клык"',
+    user_role: 'master',
+    action: 'Завершение визита',
+    details: 'Запись #bk-7821 выполнена успешно',
+  },
+];
 
 export const INITIAL_BARBERS: Barber[] = [
   {
@@ -9,6 +82,7 @@ export const INITIAL_BARBERS: Barber[] = [
     experience: '10 лет опыта',
     rating: 4.98,
     bio: 'Специалист по классическим британским стрижкам и королевскому бритью опасной бритвой.',
+    active: true,
   },
   {
     id: 'barber-2',
@@ -18,6 +92,7 @@ export const INITIAL_BARBERS: Barber[] = [
     experience: '6 лет опыта',
     rating: 4.95,
     bio: 'Мастер идеальных фейдов любой сложности, моделирования бороды и текстурных укладок.',
+    active: true,
   },
   {
     id: 'barber-3',
@@ -27,6 +102,7 @@ export const INITIAL_BARBERS: Barber[] = [
     experience: '4 года опыта',
     rating: 4.92,
     bio: 'Современные тренды, эстетика мужского стиля и комплексный уход за волосами.',
+    active: true,
   },
 ];
 
@@ -39,6 +115,7 @@ export const INITIAL_SERVICES: Service[] = [
     duration_min: 50,
     category: 'hair',
     popular: true,
+    active: true,
   },
   {
     id: 'service-2',
@@ -48,6 +125,7 @@ export const INITIAL_SERVICES: Service[] = [
     duration_min: 40,
     category: 'beard',
     popular: true,
+    active: true,
   },
   {
     id: 'service-3',
@@ -57,6 +135,7 @@ export const INITIAL_SERVICES: Service[] = [
     duration_min: 75,
     category: 'combo',
     popular: true,
+    active: true,
   },
   {
     id: 'service-4',
@@ -66,6 +145,7 @@ export const INITIAL_SERVICES: Service[] = [
     duration_min: 45,
     category: 'beard',
     popular: false,
+    active: true,
   },
   {
     id: 'service-5',
@@ -75,6 +155,7 @@ export const INITIAL_SERVICES: Service[] = [
     duration_min: 30,
     category: 'spa',
     popular: false,
+    active: true,
   },
   {
     id: 'service-6',
@@ -84,5 +165,6 @@ export const INITIAL_SERVICES: Service[] = [
     duration_min: 30,
     category: 'hair',
     popular: false,
+    active: true,
   },
 ];

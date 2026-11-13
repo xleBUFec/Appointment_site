@@ -47,29 +47,31 @@ export const SupabaseSettingsModal: React.FC<SupabaseSettingsModalProps> = ({
 
   const sqlCode = `-- Выполните в Supabase SQL Editor:
 CREATE TABLE IF NOT EXISTS public.barbers (
-    id UUID PRIMARY KEY DEFAULT gen_random_uuid(),
+    id TEXT PRIMARY KEY,
     name TEXT NOT NULL,
     role TEXT NOT NULL,
     avatar_url TEXT NOT NULL,
     experience TEXT NOT NULL,
     rating NUMERIC(3,2) DEFAULT 4.95,
     bio TEXT,
+    active BOOLEAN DEFAULT true,
     created_at TIMESTAMPTZ DEFAULT now()
 );
 
 CREATE TABLE IF NOT EXISTS public.services (
-    id UUID PRIMARY KEY DEFAULT gen_random_uuid(),
+    id TEXT PRIMARY KEY,
     title TEXT NOT NULL,
     description TEXT,
     price INTEGER NOT NULL,
     duration_min INTEGER NOT NULL,
     category TEXT NOT NULL CHECK (category IN ('hair', 'beard', 'combo', 'spa')),
     popular BOOLEAN DEFAULT false,
+    active BOOLEAN DEFAULT true,
     created_at TIMESTAMPTZ DEFAULT now()
 );
 
 CREATE TABLE IF NOT EXISTS public.bookings (
-    id UUID PRIMARY KEY DEFAULT gen_random_uuid(),
+    id TEXT PRIMARY KEY,
     client_name TEXT NOT NULL,
     client_phone TEXT NOT NULL,
     client_email TEXT,
@@ -85,14 +87,51 @@ CREATE TABLE IF NOT EXISTS public.bookings (
     created_at TIMESTAMPTZ DEFAULT now()
 );
 
+CREATE TABLE IF NOT EXISTS public.site_settings (
+    id INTEGER PRIMARY KEY DEFAULT 1,
+    hero_title TEXT NOT NULL,
+    hero_subtitle TEXT NOT NULL,
+    hero_badge TEXT NOT NULL,
+    announcement_banner TEXT,
+    announcement_active BOOLEAN DEFAULT true,
+    promo_code TEXT,
+    promo_discount_percent INTEGER DEFAULT 20,
+    address TEXT NOT NULL,
+    phone TEXT NOT NULL,
+    work_hours TEXT NOT NULL,
+    telegram TEXT,
+    seo_title TEXT,
+    seo_description TEXT,
+    seo_keywords TEXT,
+    updated_at TIMESTAMPTZ DEFAULT now()
+);
+
+CREATE TABLE IF NOT EXISTS public.audit_logs (
+    id TEXT PRIMARY KEY,
+    timestamp TIMESTAMPTZ DEFAULT now(),
+    user_name TEXT NOT NULL,
+    user_role TEXT NOT NULL,
+    action TEXT NOT NULL,
+    details TEXT
+);
+
 ALTER TABLE public.barbers ENABLE ROW LEVEL SECURITY;
 ALTER TABLE public.services ENABLE ROW LEVEL SECURITY;
 ALTER TABLE public.bookings ENABLE ROW LEVEL SECURITY;
+ALTER TABLE public.site_settings ENABLE ROW LEVEL SECURITY;
+ALTER TABLE public.audit_logs ENABLE ROW LEVEL SECURITY;
 
-CREATE POLICY "Public read barbers" ON public.barbers FOR SELECT USING (true);
-CREATE POLICY "Public read services" ON public.services FOR SELECT USING (true);
-CREATE POLICY "Public create bookings" ON public.bookings FOR INSERT WITH CHECK (true);
-CREATE POLICY "Public read bookings" ON public.bookings FOR SELECT USING (true);`;
+DROP POLICY IF EXISTS "Public all barbers" ON public.barbers;
+DROP POLICY IF EXISTS "Public all services" ON public.services;
+DROP POLICY IF EXISTS "Public all bookings" ON public.bookings;
+DROP POLICY IF EXISTS "Public all site_settings" ON public.site_settings;
+DROP POLICY IF EXISTS "Public all audit_logs" ON public.audit_logs;
+
+CREATE POLICY "Public all barbers" ON public.barbers FOR ALL USING (true) WITH CHECK (true);
+CREATE POLICY "Public all services" ON public.services FOR ALL USING (true) WITH CHECK (true);
+CREATE POLICY "Public all bookings" ON public.bookings FOR ALL USING (true) WITH CHECK (true);
+CREATE POLICY "Public all site_settings" ON public.site_settings FOR ALL USING (true) WITH CHECK (true);
+CREATE POLICY "Public all audit_logs" ON public.audit_logs FOR ALL USING (true) WITH CHECK (true);`;
 
   const copySql = () => {
     navigator.clipboard.writeText(sqlCode);
