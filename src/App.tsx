@@ -6,7 +6,8 @@ import {
   createBooking, 
   getSavedSupabaseConfig, 
   fetchSiteSettings, 
-  getActiveUser 
+  getActiveUser,
+  logoutUser 
 } from './lib/supabase';
 import { Navbar } from './components/Navbar';
 import { Hero } from './components/Hero';
@@ -17,6 +18,7 @@ import { BookingForm } from './components/BookingForm';
 import { BookingSuccessModal } from './components/BookingSuccessModal';
 import { SupabaseSettingsModal } from './components/SupabaseSettingsModal';
 import { AdminDashboard } from './components/admin/AdminDashboard';
+import { AuthModal } from './components/AuthModal';
 import { Scissors, CheckCircle, MapPin, Phone, Clock, Globe, Send, ShieldCheck, Sparkles } from 'lucide-react';
 
 export function App() {
@@ -41,6 +43,7 @@ export function App() {
   // Modals
   const [isSettingsOpen, setIsSettingsOpen] = useState(false);
   const [isAdminOpen, setIsAdminOpen] = useState(false);
+  const [isAuthOpen, setIsAuthOpen] = useState(false);
 
   const bookingSectionRef = useRef<HTMLDivElement>(null);
 
@@ -75,6 +78,19 @@ export function App() {
   const scrollToBooking = () => {
     if (bookingSectionRef.current) {
       bookingSectionRef.current.scrollIntoView({ behavior: 'smooth' });
+    }
+  };
+
+  const handleLogout = async () => {
+    await logoutUser();
+    const active = getActiveUser();
+    setCurrentUser(active);
+  };
+
+  const handleAuthSuccess = (user: UserProfile) => {
+    setCurrentUser(user);
+    if (user.role === 'admin') {
+      setIsAdminOpen(true);
     }
   };
 
@@ -144,6 +160,8 @@ export function App() {
           setCurrentUser(getActiveUser());
           setIsAdminOpen(true);
         }}
+        onOpenAuth={() => setIsAuthOpen(true)}
+        onLogout={handleLogout}
         onScrollToBooking={scrollToBooking}
       />
 
@@ -347,6 +365,14 @@ export function App() {
         onClose={() => setIsAdminOpen(false)}
         isSupabaseConnected={isSupabaseConnected}
         onRepeatBooking={handleRepeatBooking}
+        onOpenAuth={() => setIsAuthOpen(true)}
+        onUserChanged={(user) => setCurrentUser(user)}
+      />
+
+      <AuthModal
+        isOpen={isAuthOpen}
+        onClose={() => setIsAuthOpen(false)}
+        onSuccess={handleAuthSuccess}
       />
 
     </div>

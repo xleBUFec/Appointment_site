@@ -1,6 +1,15 @@
 import { createClient, SupabaseClient } from '@supabase/supabase-js';
-import { Barber, Service, Booking, SiteSettings, UserProfile, AuditLog } from '../types';
-import { INITIAL_BARBERS, INITIAL_SERVICES, INITIAL_SITE_SETTINGS, DEMO_USERS, INITIAL_AUDIT_LOGS } from './mockData';
+import { Barber, Service, Booking, SiteSettings, UserProfile, AuditLog, RegisteredUser, UserRole } from '../types';
+import { 
+  INITIAL_BARBERS, 
+  INITIAL_SERVICES, 
+  INITIAL_SITE_SETTINGS, 
+  DEMO_USERS, 
+  INITIAL_AUDIT_LOGS,
+  INITIAL_REGISTERED_USERS,
+  DEFAULT_ADMIN_EMAIL,
+  DEFAULT_ADMIN_PASSWORD
+} from './mockData';
 
 const STORAGE_KEY_URL = 'barber_supabase_url';
 const STORAGE_KEY_KEY = 'barber_supabase_key';
@@ -10,6 +19,7 @@ const STORAGE_KEY_BARBERS = 'barber_local_barbers';
 const STORAGE_KEY_SETTINGS = 'barber_local_settings';
 const STORAGE_KEY_LOGS = 'barber_local_audit_logs';
 const STORAGE_KEY_ACTIVE_USER = 'barber_active_user';
+const STORAGE_KEY_REGISTERED_USERS = 'barber_registered_users';
 
 // Initial config from environment or localStorage
 export function getSavedSupabaseConfig() {
@@ -86,6 +96,20 @@ export async function testSupabaseConnection(url: string, key: string): Promise<
   }
 }
 
+// --- Registered Users Storage ---
+export function getRegisteredUsers(): RegisteredUser[] {
+  const saved = localStorage.getItem(STORAGE_KEY_REGISTERED_USERS);
+  let users: RegisteredUser[] = saved ? JSON.parse(saved) : [];
+  
+  // Ensure default admin (thunderwoltt@gmail.com) always exists
+  const hasAdmin = users.some(u => u.email?.toLowerCase() === DEFAULT_ADMIN_EMAIL.toLowerCase());
+  if (!hasAdmin) {
+    users = [...INITIAL_REGISTERED_USERS, ...users.filter(u => u.email !== DEFAULT_ADMIN_EMAIL)];
+    localStorage.setItem(STORAGE_KEY_REGISTERED_USERS, JSON.stringify(users));
+  }
+  return users;
+}
+
 // --- Active User / Role System ---
 export function getActiveUser(): UserProfile {
   const saved = localStorage.getItem(STORAGE_KEY_ACTIVE_USER);
@@ -96,11 +120,167 @@ export function getActiveUser(): UserProfile {
       // fallback
     }
   }
-  return DEMO_USERS[0]; // Admin by default
+  // Default to the admin account requested by user
+  return DEMO_USERS[0];
 }
 
 export function setActiveUser(user: UserProfile) {
   localStorage.setItem(STORAGE_KEY_ACTIVE_USER, JSON.stringify(user));
+}
+
+// --- Authentication & Account Creation ---
+export async function loginUser(email: string, pass: string): Promise<{ success: boolean; user?: UserProfile; message?: string }> {
+  const cleanEmail = email.trim().toLowerCase();
+  const cleanPass = pass.trim();
+
+  if (!cleanEmail || !cleanPass) {
+    return { success: false, message: 'Введите email и пароль' };
+  }
+
+  // Check Supabase Auth first if connected
+  const client = getClient();
+  if (client) {
+    try {
+      const { data, error } = await client.auth.signInWithPassword({
+        email: cleanEmail,
+        password: cleanPass,
+      });
+
+      if (!error && data.user) {
+        // Look up profile metadata or role
+        const role = (data.user.user_metadata?.role as UserRole) || (cleanEmail === DEFAULT_ADMIN_EMAIL ? 'admin' : 'client');
+        const userProf: UserProfile = {
+          id: data.user.id,
+          name: data.user.user_metadata?.name || data.user.email?.split('@')[0] || 'Пользователь',
+          email: data.user.email,
+          phone: data.user.user_metadata?.phone || '',
+          role,
+          bonus_points: 500,
+        };
+        setActiveUser(userProf);
+        await addAuditLog('Вход в аккаунт', `Пользователь ${userProf.email} вошел в систему (Supabase Auth)`, userProf);
+        return { success: true, user: userProf };
+      }
+    } catch (e) {
+      console.warn('Supabase auth error, falling back to local registered users:', e);
+    }
+  }
+
+  // Fallback: check local registered users list
+  const users = getRegisteredUsers();
+  
+  // Direct check for admin thunderwoltt
+  if (cleanEmail === DEFAULT_ADMIN_EMAIL && cleanPass === DEFAULT_ADMIN_PASSWORD) {
+    const adminUser = users.find(u => u.email?.toLowerCase() === DEFAULT_ADMIN_EMAIL) || INITIAL_REGISTERED_USERS[0];
+    const { password, ...safeUser } = adminUser;
+    setActiveUser(safeUser);
+    await addAuditLog('Вход Администратора', `Администратор ${safeUser.email} успешно авторизован`, safeUser);
+    return { success: true, user: safeUser };
+  }
+
+  const found = users.find(u => u.email?.toLowerCase() === cleanEmail);
+  if (!found) {
+    return { success: false, message: 'Пользователь с таким email не найден' };
+  }
+
+  if (found.password && found.password !== cleanPass) {
+    return { success: false, message: 'Неверный пароль' };
+  }
+
+  const { password, ...safeUser } = found;
+  setActiveUser(safeUser);
+  await addAuditLog('Вход в систему', `Пользователь ${safeUser.name} (${safeUser.role}) вошел в систему`, safeUser);
+  return { success: true, user: safeUser };
+}
+
+export async function registerUser(params: {
+  name: string;
+  phone: string;
+  email: string;
+  password: string;
+  role?: UserRole;
+}): Promise<{ success: boolean; user?: UserProfile; message?: string }> {
+  const cleanEmail = params.email.trim().toLowerCase();
+  const cleanPass = params.password.trim();
+  const cleanName = params.name.trim();
+  const cleanPhone = params.phone.trim();
+
+  if (!cleanEmail || !cleanPass || !cleanName || !cleanPhone) {
+    return { success: false, message: 'Заполните все обязательные поля' };
+  }
+
+  if (cleanPass.length < 6) {
+    return { success: false, message: 'Пароль должен содержать минимум 6 символов' };
+  }
+
+  // If email is thunderwoltt@gmail.com, automatically promote to admin
+  const userRole: UserRole = cleanEmail === DEFAULT_ADMIN_EMAIL ? 'admin' : (params.role || 'client');
+
+  // Check if email already registered locally
+  const currentUsers = getRegisteredUsers();
+  const alreadyExists = currentUsers.some(u => u.email?.toLowerCase() === cleanEmail);
+  if (alreadyExists) {
+    return { success: false, message: 'Пользователь с таким email уже зарегистрирован' };
+  }
+
+  // Try Supabase Auth SignUp if available
+  const client = getClient();
+  let supabaseUserId: string | null = null;
+  if (client) {
+    try {
+      const { data, error } = await client.auth.signUp({
+        email: cleanEmail,
+        password: cleanPass,
+        options: {
+          data: {
+            name: cleanName,
+            phone: cleanPhone,
+            role: userRole,
+          },
+        },
+      });
+      if (!error && data.user) {
+        supabaseUserId = data.user.id;
+      }
+    } catch (e) {
+      console.warn('Supabase signUp fallback:', e);
+    }
+  }
+
+  const newUser: RegisteredUser = {
+    id: supabaseUserId || 'user-' + Math.random().toString(36).substr(2, 9),
+    name: cleanName,
+    phone: cleanPhone,
+    email: cleanEmail,
+    password: cleanPass,
+    role: userRole,
+    bonus_points: 300, // starting bonus for new users
+    avatar_url: `https://images.unsplash.com/photo-1535713875002-d1d0cf377fde?auto=format&fit=crop&w=400&q=80`,
+    created_at: new Date().toISOString(),
+  };
+
+  const updatedUsers = [newUser, ...currentUsers];
+  localStorage.setItem(STORAGE_KEY_REGISTERED_USERS, JSON.stringify(updatedUsers));
+
+  const { password, ...safeUser } = newUser;
+  setActiveUser(safeUser);
+  await addAuditLog('Регистрация аккаунта', `Создан новый аккаунт: ${safeUser.name} (${safeUser.email}) с ролью ${safeUser.role}`, safeUser);
+
+  return { success: true, user: safeUser };
+}
+
+export async function logoutUser(): Promise<void> {
+  const client = getClient();
+  if (client) {
+    try {
+      await client.auth.signOut();
+    } catch (e) {
+      // ignore
+    }
+  }
+  // Set default client or guest
+  const defaultClient = DEMO_USERS.find(u => u.role === 'client') || DEMO_USERS[0];
+  setActiveUser(defaultClient);
 }
 
 // --- Audit Logs ---

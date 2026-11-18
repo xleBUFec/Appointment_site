@@ -1,4 +1,4 @@
-import { Barber, Service, SiteSettings, UserProfile, AuditLog } from '../types';
+import { Barber, Service, SiteSettings, UserProfile, AuditLog, RegisteredUser } from '../types';
 
 export const INITIAL_SITE_SETTINGS: SiteSettings = {
   hero_title: 'Искусство точной стрижки и безупречного стиля',
@@ -17,40 +17,51 @@ export const INITIAL_SITE_SETTINGS: SiteSettings = {
   seo_keywords: 'барбершоп, мужская стрижка, борода, бритье, Москва, Большая Дмитровка',
 };
 
-export const DEMO_USERS: UserProfile[] = [
+export const DEFAULT_ADMIN_EMAIL = 'thunderwoltt@gmail.com';
+export const DEFAULT_ADMIN_PASSWORD = 'Qazwsx123';
+
+export const INITIAL_REGISTERED_USERS: RegisteredUser[] = [
   {
-    id: 'user-admin',
-    name: 'Константин (Владелец / Администратор)',
-    phone: '+7 999 000-00-01',
-    email: 'admin@blade-co.ru',
+    id: 'user-admin-thunderwoltt',
+    name: 'Администратор (thunderwoltt)',
+    phone: '+7 999 777-88-99',
+    email: 'thunderwoltt@gmail.com',
+    password: 'Qazwsx123',
     role: 'admin',
     avatar_url: 'https://images.unsplash.com/photo-1534528741775-53994a69daeb?auto=format&fit=crop&w=400&q=80',
+    created_at: new Date().toISOString(),
   },
   {
     id: 'user-master-1',
     name: 'Александр "Клык" Романов',
     phone: '+7 999 111-22-33',
     email: 'romanov@blade-co.ru',
+    password: 'password123',
     role: 'master',
     barber_id: 'barber-1',
     avatar_url: 'https://images.unsplash.com/photo-1506794778202-cad84cf45f1d?auto=format&fit=crop&w=400&q=80',
+    created_at: new Date().toISOString(),
   },
   {
     id: 'user-client-1',
     name: 'Иван Петров',
     phone: '+7 999 123-45-67',
     email: 'ivan@example.com',
+    password: 'password123',
     role: 'client',
     bonus_points: 650,
     avatar_url: 'https://images.unsplash.com/photo-1535713875002-d1d0cf377fde?auto=format&fit=crop&w=400&q=80',
+    created_at: new Date().toISOString(),
   },
 ];
+
+export const DEMO_USERS: UserProfile[] = INITIAL_REGISTERED_USERS.map(({ password, ...rest }) => rest);
 
 export const INITIAL_AUDIT_LOGS: AuditLog[] = [
   {
     id: 'log-1',
     timestamp: new Date(Date.now() - 3600000 * 4).toISOString(),
-    user_name: 'Константин (Админ)',
+    user_name: 'thunderwoltt (Главный Админ)',
     user_role: 'admin',
     action: 'Обновление цен',
     details: 'Услуга «Комплекс Шеф» установлена цена 3 800 ₽',

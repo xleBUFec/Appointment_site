@@ -11,6 +11,11 @@ export interface UserProfile {
   bonus_points?: number;
 }
 
+export interface RegisteredUser extends UserProfile {
+  password?: string;
+  created_at?: string;
+}
+
 export interface Barber {
   id: string;
   name: string;

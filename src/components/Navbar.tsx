@@ -1,5 +1,16 @@
 import React from 'react';
-import { Scissors, Database, CheckCircle2, LayoutDashboard, Sparkles, User, Megaphone } from 'lucide-react';
+import { 
+  Scissors, 
+  Database, 
+  CheckCircle2, 
+  LayoutDashboard, 
+  Sparkles, 
+  User, 
+  Megaphone,
+  LogIn,
+  LogOut,
+  ShieldCheck
+} from 'lucide-react';
 import { UserProfile, SiteSettings } from '../types';
 
 interface NavbarProps {
@@ -8,6 +19,8 @@ interface NavbarProps {
   settings: SiteSettings | null;
   onOpenSettings: () => void;
   onOpenAdmin: () => void;
+  onOpenAuth: () => void;
+  onLogout: () => void;
   onScrollToBooking: () => void;
 }
 
@@ -17,8 +30,13 @@ export const Navbar: React.FC<NavbarProps> = ({
   settings,
   onOpenSettings,
   onOpenAdmin,
+  onOpenAuth,
+  onLogout,
   onScrollToBooking,
 }) => {
+  const isAdmin = currentUser.role === 'admin';
+  const roleLabel = isAdmin ? 'Админ' : currentUser.role === 'master' ? 'Мастер' : 'Клиент';
+
   return (
     <div className="sticky top-0 z-40">
       
@@ -35,7 +53,7 @@ export const Navbar: React.FC<NavbarProps> = ({
         </div>
       )}
 
-      <header className="bg-[#0e1117]/90 backdrop-blur-md border-b border-[#21262d]">
+      <header className="bg-[#0e1117]/95 backdrop-blur-md border-b border-[#21262d]">
         <div className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8 h-20 flex items-center justify-between">
           
           {/* Brand */}
@@ -54,7 +72,7 @@ export const Navbar: React.FC<NavbarProps> = ({
           </div>
 
           {/* Navigation links & Actions */}
-          <div className="flex items-center gap-2 sm:gap-4">
+          <div className="flex items-center gap-2 sm:gap-3">
             
             {/* Supabase status badge */}
             <button
@@ -67,8 +85,8 @@ export const Navbar: React.FC<NavbarProps> = ({
               title="Нажмите для настройки подключения к Supabase"
             >
               <Database className="w-3.5 h-3.5" />
-              <span className="hidden sm:inline">
-                {isSupabaseConnected ? 'Supabase: Активен' : 'Демо / Подключить Supabase'}
+              <span className="hidden lg:inline">
+                {isSupabaseConnected ? 'Supabase: Активен' : 'Демо / Supabase'}
               </span>
               {isSupabaseConnected ? (
                 <CheckCircle2 className="w-3.5 h-3.5 text-emerald-400" />
@@ -77,24 +95,53 @@ export const Navbar: React.FC<NavbarProps> = ({
               )}
             </button>
 
-            {/* Admin / Cabinet Switcher Button */}
+            {/* Auth / Login button */}
             <button
-              onClick={onOpenAdmin}
-              className="flex items-center gap-2 px-3 py-1.5 rounded-xl border border-[#30363d] bg-[#161b22] hover:bg-[#21262d] text-xs font-semibold text-[#f8f5ee] transition-all"
+              onClick={onOpenAuth}
+              className="flex items-center gap-1.5 px-3 py-1.5 rounded-xl border border-[#30363d] bg-[#161b22] hover:bg-[#21262d] text-xs font-medium text-[#f8f5ee] transition-all"
+              title="Войти или зарегистрировать новый аккаунт"
             >
-              <LayoutDashboard className="w-4 h-4 text-[#c59b27]" />
-              <div className="text-left hidden sm:block">
-                <span className="block text-[10px] text-[#8b949e] leading-none uppercase">
-                  {currentUser.role === 'admin' ? 'Админ' : currentUser.role === 'master' ? 'Мастер' : 'Клиент'}
-                </span>
-                <span className="leading-tight block">Кабинет & CMS</span>
-              </div>
+              <LogIn className="w-3.5 h-3.5 text-[#c59b27]" />
+              <span className="hidden sm:inline">Войти / Регистрация</span>
             </button>
+
+            {/* User Profile & Role / Cabinet Button */}
+            <div className="flex items-center gap-1 bg-[#161b22] border border-[#30363d] rounded-xl p-0.5">
+              <button
+                onClick={onOpenAdmin}
+                className="flex items-center gap-2 px-2.5 py-1 rounded-lg hover:bg-[#21262d] text-xs font-semibold text-[#f8f5ee] transition-all"
+                title="Открыть панель управления или кабинет"
+              >
+                {isAdmin ? (
+                  <ShieldCheck className="w-4 h-4 text-[#c59b27]" />
+                ) : (
+                  <User className="w-4 h-4 text-[#c59b27]" />
+                )}
+                <div className="text-left hidden sm:block">
+                  <div className="flex items-center gap-1 leading-none">
+                    <span className="text-[10px] uppercase font-bold text-[#c59b27]">
+                      {roleLabel}
+                    </span>
+                  </div>
+                  <span className="text-[11px] text-[#f8f5ee] max-w-[110px] truncate block">
+                    {currentUser.name || currentUser.email || 'Кабинет'}
+                  </span>
+                </div>
+              </button>
+
+              <button
+                onClick={onLogout}
+                className="p-1.5 rounded-lg text-[#8b949e] hover:text-red-400 hover:bg-[#21262d] transition-colors"
+                title="Выйти из текущего аккаунта"
+              >
+                <LogOut className="w-3.5 h-3.5" />
+              </button>
+            </div>
 
             {/* Book Now Button */}
             <button
               onClick={onScrollToBooking}
-              className="gold-button text-black font-semibold text-xs sm:text-sm px-4 sm:px-5 py-2 sm:py-2.5 rounded-lg shadow-md hover:scale-[1.02] active:scale-[0.98]"
+              className="gold-button text-black font-semibold text-xs sm:text-sm px-3.5 sm:px-5 py-2 sm:py-2 rounded-lg shadow-md hover:scale-[1.02] active:scale-[0.98]"
             >
               Записаться
             </button>
