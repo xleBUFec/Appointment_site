@@ -7,17 +7,14 @@ import {
   Lock, 
   User, 
   Phone, 
-  ShieldCheck, 
-  Sparkles, 
   AlertCircle, 
   CheckCircle2, 
   Eye, 
   EyeOff,
   Scissors
 } from 'lucide-react';
-import { UserRole, UserProfile } from '../types';
+import { UserProfile } from '../types';
 import { loginUser, registerUser } from '../lib/supabase';
-import { DEFAULT_ADMIN_EMAIL, DEFAULT_ADMIN_PASSWORD } from '../lib/mockData';
 
 interface AuthModalProps {
   isOpen: boolean;
@@ -40,19 +37,12 @@ export const AuthModal: React.FC<AuthModalProps> = ({
   const [password, setPassword] = useState('');
   const [name, setName] = useState('');
   const [phone, setPhone] = useState('');
-  const [role, setRole] = useState<UserRole>('client');
 
   const [loading, setLoading] = useState(false);
   const [error, setError] = useState<string | null>(null);
   const [successMsg, setSuccessMsg] = useState<string | null>(null);
 
   if (!isOpen) return null;
-
-  const handleFillAdmin = () => {
-    setEmail(DEFAULT_ADMIN_EMAIL);
-    setPassword(DEFAULT_ADMIN_PASSWORD);
-    setError(null);
-  };
 
   const resetForm = () => {
     setEmail('');
@@ -79,7 +69,7 @@ export const AuthModal: React.FC<AuthModalProps> = ({
           resetForm();
         }, 600);
       } else {
-        setError(res.message || 'Ошибка входа. Проверьте данные.');
+        setError(res.message || 'Ошибка входа. Проверьте введенные данные.');
       }
     } catch (err: any) {
       setError(err.message || 'Произошла непредвиденная ошибка');
@@ -100,11 +90,10 @@ export const AuthModal: React.FC<AuthModalProps> = ({
         phone,
         email,
         password,
-        role,
       });
 
       if (res.success && res.user) {
-        setSuccessMsg(`Аккаунт успешно создан! Роль: ${res.user.role === 'admin' ? 'Администратор' : res.user.role === 'master' ? 'Мастер' : 'Клиент'}`);
+        setSuccessMsg(`Аккаунт успешно создан! Добро пожаловать, ${res.user.name}!`);
         setTimeout(() => {
           onSuccess(res.user!);
           onClose();
@@ -188,28 +177,6 @@ export const AuthModal: React.FC<AuthModalProps> = ({
         {/* Content & Forms */}
         <div className="p-6 overflow-y-auto max-h-[75vh]">
           
-          {/* Quick Admin preset shortcut banner */}
-          <div className="mb-5 p-3 rounded-2xl bg-gradient-to-r from-[#2a220b] to-[#1c1809] border border-[#c59b27]/30 flex items-center justify-between gap-3">
-            <div className="flex items-center gap-2.5">
-              <ShieldCheck className="w-5 h-5 text-[#c59b27] flex-shrink-0" />
-              <div className="text-left">
-                <span className="block text-[11px] font-bold text-[#f8f5ee] leading-none">
-                  Аккаунт Администратора
-                </span>
-                <span className="text-[10px] text-[#c59b27]/80 font-mono">
-                  {DEFAULT_ADMIN_EMAIL}
-                </span>
-              </div>
-            </div>
-            <button
-              type="button"
-              onClick={handleFillAdmin}
-              className="text-[11px] font-semibold px-2.5 py-1 rounded-lg bg-[#c59b27]/20 hover:bg-[#c59b27]/30 text-[#fce082] border border-[#c59b27]/40 transition-colors whitespace-nowrap"
-            >
-              Заполнить
-            </button>
-          </div>
-
           {/* Feedback messages */}
           {error && (
             <div className="mb-4 p-3 rounded-xl bg-red-950/40 border border-red-500/40 flex items-center gap-2.5 text-xs text-red-300">
@@ -299,7 +266,7 @@ export const AuthModal: React.FC<AuthModalProps> = ({
               </p>
             </form>
           ) : (
-            /* REGISTER FORM */
+            /* REGISTER FORM (STRICTLY CLIENT) */
             <form onSubmit={handleRegister} className="space-y-3.5">
               <div>
                 <label className="block text-xs font-semibold text-[#8b949e] mb-1">
@@ -350,12 +317,6 @@ export const AuthModal: React.FC<AuthModalProps> = ({
                     className="w-full bg-[#0e1117] border border-[#30363d] focus:border-[#c59b27] rounded-xl pl-10 pr-3.5 py-2.5 text-xs text-[#f8f5ee] placeholder-[#484f58] outline-none transition-all"
                   />
                 </div>
-                {email.trim().toLowerCase() === DEFAULT_ADMIN_EMAIL.toLowerCase() && (
-                  <p className="text-[10px] text-amber-300 mt-1 flex items-center gap-1 font-medium">
-                    <ShieldCheck className="w-3 h-3 text-[#c59b27]" />
-                    Этот email получит права Главного Администратора!
-                  </p>
-                )}
               </div>
 
               <div>
@@ -383,44 +344,6 @@ export const AuthModal: React.FC<AuthModalProps> = ({
                 </div>
               </div>
 
-              {/* Role selection for regular users */}
-              {email.trim().toLowerCase() !== DEFAULT_ADMIN_EMAIL.toLowerCase() && (
-                <div>
-                  <label className="block text-xs font-semibold text-[#8b949e] mb-1.5">
-                    Тип аккаунта
-                  </label>
-                  <div className="grid grid-cols-2 gap-2">
-                    <button
-                      type="button"
-                      onClick={() => setRole('client')}
-                      className={`p-2.5 rounded-xl border text-center transition-all flex flex-col items-center gap-1 ${
-                        role === 'client'
-                          ? 'border-[#c59b27] bg-[#c59b27]/10 text-[#f8f5ee]'
-                          : 'border-[#21262d] bg-[#0e1117] text-[#8b949e] hover:border-[#30363d]'
-                      }`}
-                    >
-                      <User className="w-4 h-4 text-[#c59b27]" />
-                      <span className="text-xs font-bold">Клиент</span>
-                      <span className="text-[10px] text-[#8b949e]">Запись и бонусы</span>
-                    </button>
-
-                    <button
-                      type="button"
-                      onClick={() => setRole('master')}
-                      className={`p-2.5 rounded-xl border text-center transition-all flex flex-col items-center gap-1 ${
-                        role === 'master'
-                          ? 'border-[#c59b27] bg-[#c59b27]/10 text-[#f8f5ee]'
-                          : 'border-[#21262d] bg-[#0e1117] text-[#8b949e] hover:border-[#30363d]'
-                      }`}
-                    >
-                      <Scissors className="w-4 h-4 text-[#c59b27]" />
-                      <span className="text-xs font-bold">Мастер</span>
-                      <span className="text-[10px] text-[#8b949e]">График и стрижки</span>
-                    </button>
-                  </div>
-                </div>
-              )}
-
               <button
                 type="submit"
                 disabled={loading}
@@ -431,7 +354,7 @@ export const AuthModal: React.FC<AuthModalProps> = ({
                 ) : (
                   <>
                     <UserPlus className="w-4 h-4" />
-                    <span>Зарегистрироваться</span>
+                    <span>Зарегистрироваться как клиент</span>
                   </>
                 )}
               </button>

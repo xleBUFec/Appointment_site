@@ -77,7 +77,7 @@ CREATE TABLE IF NOT EXISTS public.audit_logs (
     details TEXT
 );
 
--- 6. Включение Row Level Security (RLS)
+-- 6. Включение Row Level Security (RLS) и безопасные политики доступа
 ALTER TABLE public.barbers ENABLE ROW LEVEL SECURITY;
 ALTER TABLE public.services ENABLE ROW LEVEL SECURITY;
 ALTER TABLE public.bookings ENABLE ROW LEVEL SECURITY;
@@ -90,13 +90,44 @@ DROP POLICY IF EXISTS "Public all services" ON public.services;
 DROP POLICY IF EXISTS "Public all bookings" ON public.bookings;
 DROP POLICY IF EXISTS "Public all site_settings" ON public.site_settings;
 DROP POLICY IF EXISTS "Public all audit_logs" ON public.audit_logs;
+DROP POLICY IF EXISTS "Public read barbers" ON public.barbers;
+DROP POLICY IF EXISTS "Admin manage barbers" ON public.barbers;
+DROP POLICY IF EXISTS "Public read services" ON public.services;
+DROP POLICY IF EXISTS "Admin manage services" ON public.services;
+DROP POLICY IF EXISTS "Public read site_settings" ON public.site_settings;
+DROP POLICY IF EXISTS "Admin manage site_settings" ON public.site_settings;
+DROP POLICY IF EXISTS "Public insert bookings" ON public.bookings;
+DROP POLICY IF EXISTS "Admin manage bookings" ON public.bookings;
+DROP POLICY IF EXISTS "Admin manage audit_logs" ON public.audit_logs;
 
--- Политики доступа
-CREATE POLICY "Public all barbers" ON public.barbers FOR ALL USING (true) WITH CHECK (true);
-CREATE POLICY "Public all services" ON public.services FOR ALL USING (true) WITH CHECK (true);
-CREATE POLICY "Public all bookings" ON public.bookings FOR ALL USING (true) WITH CHECK (true);
-CREATE POLICY "Public all site_settings" ON public.site_settings FOR ALL USING (true) WITH CHECK (true);
-CREATE POLICY "Public all audit_logs" ON public.audit_logs FOR ALL USING (true) WITH CHECK (true);
+-- БЕЗОПАСНЫЕ ПОЛИТИКИ ДОСТУПА (Клиенты не могут менять прайс, удалять мастеров и читать логи):
+-- 1. Мастера: чтение доступно всем, изменения только администраторам
+CREATE POLICY "Public read barbers" ON public.barbers 
+    FOR SELECT USING (true);
+CREATE POLICY "Admin manage barbers" ON public.barbers 
+    FOR ALL TO authenticated USING (auth.jwt() ->> 'email' = 'thunderwoltt@gmail.com') WITH CHECK (auth.jwt() ->> 'email' = 'thunderwoltt@gmail.com');
+
+-- 2. Услуги: чтение доступно всем, изменения только администраторам
+CREATE POLICY "Public read services" ON public.services 
+    FOR SELECT USING (true);
+CREATE POLICY "Admin manage services" ON public.services 
+    FOR ALL TO authenticated USING (auth.jwt() ->> 'email' = 'thunderwoltt@gmail.com') WITH CHECK (auth.jwt() ->> 'email' = 'thunderwoltt@gmail.com');
+
+-- 3. Настройки сайта & SEO: чтение доступно всем, изменения только администраторам
+CREATE POLICY "Public read site_settings" ON public.site_settings 
+    FOR SELECT USING (true);
+CREATE POLICY "Admin manage site_settings" ON public.site_settings 
+    FOR ALL TO authenticated USING (auth.jwt() ->> 'email' = 'thunderwoltt@gmail.com') WITH CHECK (auth.jwt() ->> 'email' = 'thunderwoltt@gmail.com');
+
+-- 4. Заявки (Бронирования): создание разрешено клиентам (INSERT). Просмотр всех заявок — только администратору
+CREATE POLICY "Public insert bookings" ON public.bookings 
+    FOR INSERT WITH CHECK (true);
+CREATE POLICY "Admin manage bookings" ON public.bookings 
+    FOR ALL TO authenticated USING (auth.jwt() ->> 'email' = 'thunderwoltt@gmail.com') WITH CHECK (auth.jwt() ->> 'email' = 'thunderwoltt@gmail.com');
+
+-- 5. Журнал аудита: доступен только администраторам
+CREATE POLICY "Admin manage audit_logs" ON public.audit_logs 
+    FOR ALL TO authenticated USING (auth.jwt() ->> 'email' = 'thunderwoltt@gmail.com') WITH CHECK (auth.jwt() ->> 'email' = 'thunderwoltt@gmail.com');
 
 -- 7. Начальные данные (Seed Data)
 INSERT INTO public.site_settings (id, hero_title, hero_subtitle, hero_badge, announcement_banner, announcement_active, promo_code, promo_discount_percent, address, phone, work_hours, telegram, seo_title, seo_description, seo_keywords)

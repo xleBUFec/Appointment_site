@@ -1,17 +1,20 @@
 import React, { useState } from 'react';
-import { Database, CheckCircle2, AlertCircle, X, ExternalLink, Copy, Check, Terminal, Key, Globe, Shield } from 'lucide-react';
+import { Database, CheckCircle2, AlertCircle, X, ExternalLink, Copy, Check, Terminal, Key, Globe, Shield, Lock } from 'lucide-react';
+import { UserProfile } from '../types';
 import { getSavedSupabaseConfig, saveSupabaseConfig, testSupabaseConnection } from '../lib/supabase';
 
 interface SupabaseSettingsModalProps {
   isOpen: boolean;
   onClose: () => void;
   onConfigUpdated: () => void;
+  currentUser: UserProfile;
 }
 
 export const SupabaseSettingsModal: React.FC<SupabaseSettingsModalProps> = ({
   isOpen,
   onClose,
   onConfigUpdated,
+  currentUser,
 }) => {
   const currentConfig = getSavedSupabaseConfig();
   const [url, setUrl] = useState(currentConfig.url);
@@ -23,6 +26,8 @@ export const SupabaseSettingsModal: React.FC<SupabaseSettingsModalProps> = ({
 
   if (!isOpen) return null;
 
+  const isAdmin = currentUser.role === 'admin';
+
   const handleTest = async () => {
     setIsTesting(true);
     setTestResult(null);
@@ -32,20 +37,32 @@ export const SupabaseSettingsModal: React.FC<SupabaseSettingsModalProps> = ({
   };
 
   const handleSave = () => {
-    saveSupabaseConfig(url, anonKey);
-    onConfigUpdated();
-    onClose();
+    try {
+      saveSupabaseConfig(url, anonKey, currentUser);
+      onConfigUpdated();
+      onClose();
+    } catch (e: any) {
+      setTestResult({ success: false, message: e.message || 'Ошибка сохранения' });
+    }
   };
 
   const handleResetDemo = () => {
-    saveSupabaseConfig('', '');
-    setUrl('');
-    setAnonKey('');
-    setTestResult({ success: true, message: 'Переключено в Демо-режим (локальные данные)' });
-    onConfigUpdated();
+    try {
+      saveSupabaseConfig('', '', currentUser);
+      setUrl('');
+      setAnonKey('');
+      setTestResult({ success: true, message: 'Переключено в Демо-режим (локальные данные)' });
+      onConfigUpdated();
+    } catch (e: any) {
+      setTestResult({ success: false, message: e.message || 'Ошибка сброса' });
+    }
   };
 
-  const sqlCode = `-- Выполните в Supabase SQL Editor:
+  const sqlCode = `-- ========================================================
+-- BLADE & CO. BARBERSHOP DATABASE SCHEMA & SECURE RLS
+-- Вставьте данный скрипт в Supabase SQL Editor
+-- ========================================================
+
 CREATE TABLE IF NOT EXISTS public.barbers (
     id TEXT PRIMARY KEY,
     name TEXT NOT NULL,
@@ -83,7 +100,7 @@ CREATE TABLE IF NOT EXISTS public.bookings (
     booking_date DATE NOT NULL,
     booking_time TEXT NOT NULL,
     comment TEXT,
-    status TEXT DEFAULT 'confirmed',
+    status TEXT DEFAULT 'confirmed' CHECK (status IN ('confirmed', 'cancelled', 'completed')),
     created_at TIMESTAMPTZ DEFAULT now()
 );
 
@@ -115,23 +132,48 @@ CREATE TABLE IF NOT EXISTS public.audit_logs (
     details TEXT
 );
 
+-- Включение Row Level Security (RLS)
 ALTER TABLE public.barbers ENABLE ROW LEVEL SECURITY;
 ALTER TABLE public.services ENABLE ROW LEVEL SECURITY;
 ALTER TABLE public.bookings ENABLE ROW LEVEL SECURITY;
 ALTER TABLE public.site_settings ENABLE ROW LEVEL SECURITY;
 ALTER TABLE public.audit_logs ENABLE ROW LEVEL SECURITY;
 
+-- Удаление старых политик
 DROP POLICY IF EXISTS "Public all barbers" ON public.barbers;
 DROP POLICY IF EXISTS "Public all services" ON public.services;
 DROP POLICY IF EXISTS "Public all bookings" ON public.bookings;
 DROP POLICY IF EXISTS "Public all site_settings" ON public.site_settings;
 DROP POLICY IF EXISTS "Public all audit_logs" ON public.audit_logs;
+DROP POLICY IF EXISTS "Public read barbers" ON public.barbers;
+DROP POLICY IF EXISTS "Admin manage barbers" ON public.barbers;
+DROP POLICY IF EXISTS "Public read services" ON public.services;
+DROP POLICY IF EXISTS "Admin manage services" ON public.services;
+DROP POLICY IF EXISTS "Public read site_settings" ON public.site_settings;
+DROP POLICY IF EXISTS "Admin manage site_settings" ON public.site_settings;
+DROP POLICY IF EXISTS "Public insert bookings" ON public.bookings;
+DROP POLICY IF EXISTS "Admin manage bookings" ON public.bookings;
+DROP POLICY IF EXISTS "Admin manage audit_logs" ON public.audit_logs;
 
-CREATE POLICY "Public all barbers" ON public.barbers FOR ALL USING (true) WITH CHECK (true);
-CREATE POLICY "Public all services" ON public.services FOR ALL USING (true) WITH CHECK (true);
-CREATE POLICY "Public all bookings" ON public.bookings FOR ALL USING (true) WITH CHECK (true);
-CREATE POLICY "Public all site_settings" ON public.site_settings FOR ALL USING (true) WITH CHECK (true);
-CREATE POLICY "Public all audit_logs" ON public.audit_logs FOR ALL USING (true) WITH CHECK (true);`;
+-- БЕЗОПАСНЫЕ ПОЛИТИКИ ДОСТУПА (Клиенты не могут менять прайс, удалять мастеров и читать логи):
+-- 1. Мастера: чтение доступно всем, изменения только администраторам
+CREATE POLICY "Public read barbers" ON public.barbers FOR SELECT USING (true);
+CREATE POLICY "Admin manage barbers" ON public.barbers FOR ALL TO authenticated USING (auth.jwt() ->> 'email' = 'thunderwoltt@gmail.com') WITH CHECK (auth.jwt() ->> 'email' = 'thunderwoltt@gmail.com');
+
+-- 2. Услуги: чтение доступно всем, изменения только администраторам
+CREATE POLICY "Public read services" ON public.services FOR SELECT USING (true);
+CREATE POLICY "Admin manage services" ON public.services FOR ALL TO authenticated USING (auth.jwt() ->> 'email' = 'thunderwoltt@gmail.com') WITH CHECK (auth.jwt() ->> 'email' = 'thunderwoltt@gmail.com');
+
+-- 3. Настройки сайта & SEO: чтение доступно всем, изменения только администраторам
+CREATE POLICY "Public read site_settings" ON public.site_settings FOR SELECT USING (true);
+CREATE POLICY "Admin manage site_settings" ON public.site_settings FOR ALL TO authenticated USING (auth.jwt() ->> 'email' = 'thunderwoltt@gmail.com') WITH CHECK (auth.jwt() ->> 'email' = 'thunderwoltt@gmail.com');
+
+-- 4. Заявки (Бронирования): создание разрешено клиентам (INSERT). Просмотр всех заявок — только администратору
+CREATE POLICY "Public insert bookings" ON public.bookings FOR INSERT WITH CHECK (true);
+CREATE POLICY "Admin manage bookings" ON public.bookings FOR ALL TO authenticated USING (auth.jwt() ->> 'email' = 'thunderwoltt@gmail.com') WITH CHECK (auth.jwt() ->> 'email' = 'thunderwoltt@gmail.com');
+
+-- 5. Журнал аудита: доступен только администраторам
+CREATE POLICY "Admin manage audit_logs" ON public.audit_logs FOR ALL TO authenticated USING (auth.jwt() ->> 'email' = 'thunderwoltt@gmail.com') WITH CHECK (auth.jwt() ->> 'email' = 'thunderwoltt@gmail.com');`;
 
   const copySql = () => {
     navigator.clipboard.writeText(sqlCode);
@@ -151,179 +193,190 @@ CREATE POLICY "Public all audit_logs" ON public.audit_logs FOR ALL USING (true) 
             </div>
             <div>
               <h3 className="font-serif text-xl font-bold text-[#f8f5ee]">
-                Подключение к Supabase
+                Подключение к Supabase API
               </h3>
               <p className="text-xs text-[#8b949e]">
-                Настройте базу данных для сохранения записей клиентов
+                Настройки базы данных (Доступ ограничен администратором)
               </p>
             </div>
           </div>
-
           <button
             onClick={onClose}
-            className="text-[#8b949e] hover:text-[#f8f5ee] p-1.5 rounded-lg hover:bg-[#21262d] transition-colors"
+            className="p-2 rounded-xl text-[#8b949e] hover:text-[#f8f5ee] hover:bg-[#21262d] transition-colors"
           >
             <X className="w-5 h-5" />
           </button>
         </div>
 
-        {/* Tab switch */}
-        <div className="flex gap-2 my-4">
-          <button
-            onClick={() => setActiveTab('config')}
-            className={`px-4 py-2 rounded-xl text-xs sm:text-sm font-semibold transition-all ${
-              activeTab === 'config'
-                ? 'bg-[#c59b27] text-black shadow-md'
-                : 'bg-[#0e1117] text-[#8b949e] border border-[#21262d] hover:text-[#f8f5ee]'
-            }`}
-          >
-            Настройки API ключей
-          </button>
-          <button
-            onClick={() => setActiveTab('sql')}
-            className={`px-4 py-2 rounded-xl text-xs sm:text-sm font-semibold transition-all flex items-center gap-1.5 ${
-              activeTab === 'sql'
-                ? 'bg-[#c59b27] text-black shadow-md'
-                : 'bg-[#0e1117] text-[#8b949e] border border-[#21262d] hover:text-[#f8f5ee]'
-            }`}
-          >
-            <Terminal className="w-4 h-4" />
-            <span>SQL-скрипт таблиц</span>
-          </button>
-        </div>
-
-        {/* Body content */}
-        <div className="overflow-y-auto flex-1 pr-1 space-y-5">
-          {activeTab === 'config' ? (
-            <>
-              {/* Info banner */}
-              <div className="p-4 rounded-2xl bg-[#0e1117] border border-[#21262d] text-xs text-[#8b949e] space-y-2">
-                <div className="flex items-center gap-2 font-semibold text-[#f8f5ee]">
-                  <Shield className="w-4 h-4 text-[#c59b27]" />
-                  <span>Где найти ключи в Supabase:</span>
-                </div>
-                <p>
-                  1. Войдите в <a href="https://supabase.com" target="_blank" rel="noreferrer" className="text-[#c59b27] underline inline-flex items-center gap-1">supabase.com <ExternalLink className="w-3 h-3" /></a> и откройте проект.<br/>
-                  2. Перейдите в <strong>Project Settings → API</strong>.<br/>
-                  3. Скопируйте <strong>Project URL</strong> и публичный ключ <strong>anon / public key</strong>.
-                </p>
-              </div>
-
-              {/* URL Input */}
-              <div>
-                <label className="block text-xs font-semibold text-[#8b949e] uppercase tracking-wider mb-2">
-                  Supabase Project URL
-                </label>
-                <div className="relative">
-                  <div className="absolute inset-y-0 left-0 pl-3.5 flex items-center pointer-events-none text-[#8b949e]">
-                    <Globe className="w-4 h-4" />
-                  </div>
-                  <input
-                    type="url"
-                    value={url}
-                    onChange={(e) => setUrl(e.target.value)}
-                    placeholder="https://xyzabcdefghijklm.supabase.co"
-                    className="w-full bg-[#0e1117] border border-[#21262d] rounded-xl pl-10 pr-4 py-3 text-sm text-[#f8f5ee] placeholder-[#484f58] focus:outline-none focus:border-[#c59b27]"
-                  />
-                </div>
-              </div>
-
-              {/* Anon Key Input */}
-              <div>
-                <label className="block text-xs font-semibold text-[#8b949e] uppercase tracking-wider mb-2">
-                  Supabase Anon (Public) Key
-                </label>
-                <div className="relative">
-                  <div className="absolute inset-y-0 left-0 pl-3.5 flex items-center pointer-events-none text-[#8b949e]">
-                    <Key className="w-4 h-4" />
-                  </div>
-                  <input
-                    type="password"
-                    value={anonKey}
-                    onChange={(e) => setAnonKey(e.target.value)}
-                    placeholder="eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9..."
-                    className="w-full bg-[#0e1117] border border-[#21262d] rounded-xl pl-10 pr-4 py-3 text-sm text-[#f8f5ee] placeholder-[#484f58] focus:outline-none focus:border-[#c59b27]"
-                  />
-                </div>
-              </div>
-
-              {/* Test result status */}
-              {testResult && (
-                <div
-                  className={`p-3.5 rounded-xl border flex items-start gap-2.5 text-xs sm:text-sm ${
-                    testResult.success
-                      ? 'bg-emerald-950/40 border-emerald-500/40 text-emerald-300'
-                      : 'bg-red-950/40 border-red-500/40 text-red-300'
-                  }`}
-                >
-                  {testResult.success ? (
-                    <CheckCircle2 className="w-5 h-5 text-emerald-400 flex-shrink-0 mt-0.5" />
-                  ) : (
-                    <AlertCircle className="w-5 h-5 text-red-400 flex-shrink-0 mt-0.5" />
-                  )}
-                  <span>{testResult.message}</span>
-                </div>
-              )}
-            </>
-          ) : (
-            <div className="space-y-3">
-              <div className="flex items-center justify-between">
-                <span className="text-xs text-[#8b949e]">
-                  Выполните этот скрипт в <strong>SQL Editor</strong> вашего проекта Supabase:
-                </span>
-                <button
-                  onClick={copySql}
-                  className="flex items-center gap-1.5 px-3 py-1.5 rounded-lg bg-[#21262d] text-xs font-semibold text-[#f8f5ee] hover:bg-[#30363d] transition-colors"
-                >
-                  {copiedSql ? (
-                    <>
-                      <Check className="w-3.5 h-3.5 text-emerald-400" />
-                      <span className="text-emerald-400">Скопировано!</span>
-                    </>
-                  ) : (
-                    <>
-                      <Copy className="w-3.5 h-3.5" />
-                      <span>Копировать SQL</span>
-                    </>
-                  )}
-                </button>
-              </div>
-
-              <pre className="p-4 rounded-xl bg-[#0e1117] border border-[#21262d] text-[11px] font-mono text-[#8b949e] overflow-x-auto max-h-72">
-                <code>{sqlCode}</code>
-              </pre>
+        {/* Access Denial for Non-Admins */}
+        {!isAdmin ? (
+          <div className="py-16 text-center max-w-md mx-auto flex flex-col items-center">
+            <div className="w-14 h-14 rounded-2xl bg-red-950/40 border border-red-500/30 text-red-400 flex items-center justify-center mb-4">
+              <Lock className="w-7 h-7" />
             </div>
-          )}
-        </div>
-
-        {/* Footer actions */}
-        <div className="pt-5 border-t border-[#21262d] flex flex-wrap items-center justify-between gap-3">
-          <button
-            type="button"
-            onClick={handleResetDemo}
-            className="text-xs text-[#8b949e] hover:text-[#f8f5ee] underline cursor-pointer"
-          >
-            Сбросить на Демо-режим
-          </button>
-
-          <div className="flex items-center gap-2">
+            <h4 className="font-serif text-lg font-bold text-[#f8f5ee] mb-2">
+              Доступ запрещен
+            </h4>
+            <p className="text-xs text-[#8b949e] leading-relaxed mb-6">
+              Ключи API, URL проекта и структура базы данных Supabase защищены. Просматривать и изменять эти параметры может только Главный Администратор.
+            </p>
             <button
-              type="button"
-              disabled={isTesting || !url || !anonKey}
-              onClick={handleTest}
-              className="px-4 py-2.5 rounded-xl border border-[#21262d] text-xs font-semibold text-[#f8f5ee] hover:bg-[#21262d] disabled:opacity-40 transition-colors"
+              onClick={onClose}
+              className="px-5 py-2 rounded-xl bg-[#21262d] text-xs font-semibold text-[#f8f5ee] hover:bg-[#30363d] transition-colors"
             >
-              {isTesting ? 'Проверка...' : 'Проверить соединение'}
-            </button>
-            <button
-              type="button"
-              onClick={handleSave}
-              className="gold-button px-5 py-2.5 rounded-xl text-xs font-bold text-black"
-            >
-              Сохранить
+              Закрыть
             </button>
           </div>
-        </div>
+        ) : (
+          /* Admin View */
+          <>
+            {/* Tabs */}
+            <div className="flex gap-2 my-4 border-b border-[#21262d] pb-2">
+              <button
+                onClick={() => setActiveTab('config')}
+                className={`flex items-center gap-2 px-4 py-2 rounded-xl text-xs font-semibold transition-all ${
+                  activeTab === 'config'
+                    ? 'bg-[#c59b27] text-black shadow-md'
+                    : 'text-[#8b949e] hover:text-[#f8f5ee]'
+                }`}
+              >
+                <Key className="w-4 h-4" />
+                <span>API Ключи & Подключение</span>
+              </button>
+              <button
+                onClick={() => setActiveTab('sql')}
+                className={`flex items-center gap-2 px-4 py-2 rounded-xl text-xs font-semibold transition-all ${
+                  activeTab === 'sql'
+                    ? 'bg-[#c59b27] text-black shadow-md'
+                    : 'text-[#8b949e] hover:text-[#f8f5ee]'
+                }`}
+              >
+                <Terminal className="w-4 h-4" />
+                <span>Безопасная SQL-схема & RLS</span>
+              </button>
+            </div>
+
+            {/* Tab 1: Config */}
+            {activeTab === 'config' && (
+              <div className="space-y-4 overflow-y-auto pr-1">
+                <div>
+                  <label className="block text-xs font-semibold text-[#8b949e] mb-1.5 flex items-center justify-between">
+                    <span>Project URL</span>
+                    <span className="text-[10px] text-[#484f58]">https://your-project.supabase.co</span>
+                  </label>
+                  <div className="relative">
+                    <Globe className="w-4 h-4 text-[#8b949e] absolute left-3.5 top-1/2 -translate-y-1/2" />
+                    <input
+                      type="text"
+                      value={url}
+                      onChange={(e) => setUrl(e.target.value)}
+                      placeholder="https://xyzcompany.supabase.co"
+                      className="w-full bg-[#0e1117] border border-[#30363d] focus:border-[#c59b27] rounded-xl pl-10 pr-3.5 py-2.5 text-xs text-[#f8f5ee] placeholder-[#484f58] outline-none transition-all font-mono"
+                    />
+                  </div>
+                </div>
+
+                <div>
+                  <label className="block text-xs font-semibold text-[#8b949e] mb-1.5 flex items-center justify-between">
+                    <span>Anon / Public Key</span>
+                    <span className="text-[10px] text-[#484f58]">eyJh...</span>
+                  </label>
+                  <div className="relative">
+                    <Key className="w-4 h-4 text-[#8b949e] absolute left-3.5 top-1/2 -translate-y-1/2" />
+                    <input
+                      type="password"
+                      value={anonKey}
+                      onChange={(e) => setAnonKey(e.target.value)}
+                      placeholder="eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9..."
+                      className="w-full bg-[#0e1117] border border-[#30363d] focus:border-[#c59b27] rounded-xl pl-10 pr-3.5 py-2.5 text-xs text-[#f8f5ee] placeholder-[#484f58] outline-none transition-all font-mono"
+                    />
+                  </div>
+                </div>
+
+                {/* Test results banner */}
+                {testResult && (
+                  <div
+                    className={`p-3 rounded-xl border flex items-start gap-2.5 text-xs ${
+                      testResult.success
+                        ? 'bg-emerald-950/40 border-emerald-500/30 text-emerald-300'
+                        : 'bg-red-950/40 border-red-500/30 text-red-300'
+                    }`}
+                  >
+                    {testResult.success ? (
+                      <CheckCircle2 className="w-4 h-4 flex-shrink-0 text-emerald-400 mt-0.5" />
+                    ) : (
+                      <AlertCircle className="w-4 h-4 flex-shrink-0 text-red-400 mt-0.5" />
+                    )}
+                    <div>
+                      <p className="font-semibold">{testResult.success ? 'Успешно' : 'Ошибка соединения'}</p>
+                      <p className="text-[11px] opacity-80 mt-0.5">{testResult.message}</p>
+                    </div>
+                  </div>
+                )}
+
+                {/* Actions */}
+                <div className="pt-2 flex flex-wrap items-center justify-between gap-3">
+                  <div className="flex items-center gap-2">
+                    <button
+                      type="button"
+                      onClick={handleTest}
+                      disabled={isTesting || !url || !anonKey}
+                      className="px-4 py-2 rounded-xl border border-[#30363d] bg-[#21262d] hover:bg-[#30363d] text-xs font-semibold text-[#f8f5ee] transition-all disabled:opacity-40"
+                    >
+                      {isTesting ? 'Проверка...' : 'Тест соединения'}
+                    </button>
+                    <button
+                      type="button"
+                      onClick={handleResetDemo}
+                      className="px-3 py-2 rounded-xl text-xs text-[#8b949e] hover:text-amber-400 transition-colors"
+                    >
+                      Сбросить в демо-режим
+                    </button>
+                  </div>
+
+                  <button
+                    type="button"
+                    onClick={handleSave}
+                    className="gold-button text-black font-bold text-xs px-5 py-2.5 rounded-xl shadow-lg hover:scale-[1.02] active:scale-[0.98] transition-all"
+                  >
+                    Сохранить настройки
+                  </button>
+                </div>
+              </div>
+            )}
+
+            {/* Tab 2: SQL */}
+            {activeTab === 'sql' && (
+              <div className="space-y-3 overflow-y-auto pr-1">
+                <div className="flex items-center justify-between">
+                  <span className="text-xs text-[#8b949e]">
+                    Выполните этот SQL в Supabase Dashboard для создания таблиц с политиками безопасности RLS.
+                  </span>
+                  <button
+                    onClick={copySql}
+                    className="flex items-center gap-1.5 px-3 py-1.5 rounded-lg bg-[#21262d] hover:bg-[#30363d] text-xs font-semibold text-[#f8f5ee] transition-colors"
+                  >
+                    {copiedSql ? (
+                      <>
+                        <Check className="w-3.5 h-3.5 text-emerald-400" />
+                        <span className="text-emerald-400">Скопировано!</span>
+                      </>
+                    ) : (
+                      <>
+                        <Copy className="w-3.5 h-3.5 text-[#c59b27]" />
+                        <span>Копировать SQL</span>
+                      </>
+                    )}
+                  </button>
+                </div>
+
+                <pre className="bg-[#0e1117] border border-[#30363d] rounded-2xl p-4 text-[11px] font-mono text-[#8b949e] overflow-x-auto max-h-[45vh] leading-relaxed select-all">
+                  <code>{sqlCode}</code>
+                </pre>
+              </div>
+            )}
+          </>
+        )}
 
       </div>
     </div>

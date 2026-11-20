@@ -4,12 +4,12 @@ import {
   Database, 
   CheckCircle2, 
   LayoutDashboard, 
-  Sparkles, 
   User, 
   Megaphone,
   LogIn,
   LogOut,
-  ShieldCheck
+  ShieldCheck,
+  Calendar
 } from 'lucide-react';
 import { UserProfile, SiteSettings } from '../types';
 
@@ -34,8 +34,10 @@ export const Navbar: React.FC<NavbarProps> = ({
   onLogout,
   onScrollToBooking,
 }) => {
-  const isAdmin = currentUser.role === 'admin';
-  const roleLabel = isAdmin ? 'Админ' : currentUser.role === 'master' ? 'Мастер' : 'Клиент';
+  const isAuthenticated = currentUser.id !== 'guest' && Boolean(currentUser.email);
+  const isAdmin = isAuthenticated && currentUser.role === 'admin';
+  const isMaster = isAuthenticated && currentUser.role === 'master';
+  const isClient = isAuthenticated && currentUser.role === 'client';
 
   return (
     <div className="sticky top-0 z-40">
@@ -74,74 +76,80 @@ export const Navbar: React.FC<NavbarProps> = ({
           {/* Navigation links & Actions */}
           <div className="flex items-center gap-2 sm:gap-3">
             
-            {/* Supabase status badge */}
-            <button
-              onClick={onOpenSettings}
-              className={`flex items-center gap-2 px-3 py-1.5 rounded-full text-xs font-medium border transition-all ${
-                isSupabaseConnected
-                  ? 'bg-emerald-950/40 text-emerald-400 border-emerald-500/30 hover:bg-emerald-900/50'
-                  : 'bg-amber-950/40 text-amber-300 border-amber-500/30 hover:bg-amber-900/50'
-              }`}
-              title="Нажмите для настройки подключения к Supabase"
-            >
-              <Database className="w-3.5 h-3.5" />
-              <span className="hidden lg:inline">
-                {isSupabaseConnected ? 'Supabase: Активен' : 'Демо / Supabase'}
-              </span>
-              {isSupabaseConnected ? (
-                <CheckCircle2 className="w-3.5 h-3.5 text-emerald-400" />
-              ) : (
-                <span className="w-2 h-2 rounded-full bg-amber-400 animate-pulse" />
-              )}
-            </button>
-
-            {/* Auth / Login button */}
-            <button
-              onClick={onOpenAuth}
-              className="flex items-center gap-1.5 px-3 py-1.5 rounded-xl border border-[#30363d] bg-[#161b22] hover:bg-[#21262d] text-xs font-medium text-[#f8f5ee] transition-all"
-              title="Войти или зарегистрировать новый аккаунт"
-            >
-              <LogIn className="w-3.5 h-3.5 text-[#c59b27]" />
-              <span className="hidden sm:inline">Войти / Регистрация</span>
-            </button>
-
-            {/* User Profile & Role / Cabinet Button */}
-            <div className="flex items-center gap-1 bg-[#161b22] border border-[#30363d] rounded-xl p-0.5">
+            {/* Supabase status badge - ONLY VISIBLE TO AUTHENTICATED ADMINISTRATOR */}
+            {isAdmin && (
               <button
-                onClick={onOpenAdmin}
-                className="flex items-center gap-2 px-2.5 py-1 rounded-lg hover:bg-[#21262d] text-xs font-semibold text-[#f8f5ee] transition-all"
-                title="Открыть панель управления или кабинет"
+                onClick={onOpenSettings}
+                className={`flex items-center gap-2 px-3 py-1.5 rounded-full text-xs font-medium border transition-all ${
+                  isSupabaseConnected
+                    ? 'bg-emerald-950/40 text-emerald-400 border-emerald-500/30 hover:bg-emerald-900/50'
+                    : 'bg-amber-950/40 text-amber-300 border-amber-500/30 hover:bg-amber-900/50'
+                }`}
+                title="Настройка подключения к Supabase (только для администратора)"
               >
-                {isAdmin ? (
-                  <ShieldCheck className="w-4 h-4 text-[#c59b27]" />
+                <Database className="w-3.5 h-3.5" />
+                <span className="hidden lg:inline">
+                  {isSupabaseConnected ? 'Supabase: Подключен' : 'Supabase: Офлайн/Демо'}
+                </span>
+                {isSupabaseConnected ? (
+                  <CheckCircle2 className="w-3.5 h-3.5 text-emerald-400" />
                 ) : (
-                  <User className="w-4 h-4 text-[#c59b27]" />
+                  <span className="w-2 h-2 rounded-full bg-amber-400 animate-pulse" />
                 )}
-                <div className="text-left hidden sm:block">
-                  <div className="flex items-center gap-1 leading-none">
-                    <span className="text-[10px] uppercase font-bold text-[#c59b27]">
-                      {roleLabel}
+              </button>
+            )}
+
+            {/* If NOT logged in: Show single "Войти" button */}
+            {!isAuthenticated ? (
+              <button
+                onClick={onOpenAuth}
+                className="flex items-center gap-2 px-3.5 py-2 rounded-xl border border-[#30363d] bg-[#161b22] hover:bg-[#21262d] text-xs font-semibold text-[#f8f5ee] transition-all"
+                title="Войти в аккаунт или зарегистрироваться"
+              >
+                <LogIn className="w-3.5 h-3.5 text-[#c59b27]" />
+                <span>Войти</span>
+              </button>
+            ) : (
+              /* If Authenticated: Show role-appropriate cabinet button & logout */
+              <div className="flex items-center gap-1 bg-[#161b22] border border-[#30363d] rounded-xl p-0.5">
+                <button
+                  onClick={onOpenAdmin}
+                  className="flex items-center gap-2 px-2.5 py-1.5 rounded-lg hover:bg-[#21262d] text-xs font-semibold text-[#f8f5ee] transition-all"
+                  title={isAdmin ? 'Открыть панель управления (CMS)' : isMaster ? 'Кабинет мастера' : 'Мои записи и бонусы'}
+                >
+                  {isAdmin ? (
+                    <ShieldCheck className="w-4 h-4 text-[#c59b27]" />
+                  ) : isMaster ? (
+                    <Scissors className="w-4 h-4 text-[#c59b27]" />
+                  ) : (
+                    <Calendar className="w-4 h-4 text-[#c59b27]" />
+                  )}
+                  <div className="text-left hidden sm:block">
+                    <div className="flex items-center gap-1 leading-none">
+                      <span className="text-[10px] uppercase font-bold text-[#c59b27]">
+                        {isAdmin ? 'Администратор' : isMaster ? 'Мастер' : 'Клиент'}
+                      </span>
+                    </div>
+                    <span className="text-[11px] text-[#f8f5ee] max-w-[120px] truncate block">
+                      {currentUser.name || currentUser.email}
                     </span>
                   </div>
-                  <span className="text-[11px] text-[#f8f5ee] max-w-[110px] truncate block">
-                    {currentUser.name || currentUser.email || 'Кабинет'}
-                  </span>
-                </div>
-              </button>
+                </button>
 
-              <button
-                onClick={onLogout}
-                className="p-1.5 rounded-lg text-[#8b949e] hover:text-red-400 hover:bg-[#21262d] transition-colors"
-                title="Выйти из текущего аккаунта"
-              >
-                <LogOut className="w-3.5 h-3.5" />
-              </button>
-            </div>
+                <button
+                  onClick={onLogout}
+                  className="p-2 rounded-lg text-[#8b949e] hover:text-red-400 hover:bg-[#21262d] transition-colors"
+                  title="Выйти из аккаунта"
+                >
+                  <LogOut className="w-3.5 h-3.5" />
+                </button>
+              </div>
+            )}
 
             {/* Book Now Button */}
             <button
               onClick={onScrollToBooking}
-              className="gold-button text-black font-semibold text-xs sm:text-sm px-3.5 sm:px-5 py-2 sm:py-2 rounded-lg shadow-md hover:scale-[1.02] active:scale-[0.98]"
+              className="gold-button text-black font-semibold text-xs sm:text-sm px-3.5 sm:px-5 py-2 sm:py-2.5 rounded-lg shadow-md hover:scale-[1.02] active:scale-[0.98]"
             >
               Записаться
             </button>

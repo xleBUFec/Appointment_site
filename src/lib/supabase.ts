@@ -8,7 +8,8 @@ import {
   INITIAL_AUDIT_LOGS,
   INITIAL_REGISTERED_USERS,
   DEFAULT_ADMIN_EMAIL,
-  DEFAULT_ADMIN_PASSWORD
+  DEFAULT_ADMIN_PASSWORD,
+  DEFAULT_GUEST_USER
 } from './mockData';
 
 const STORAGE_KEY_URL = 'barber_supabase_url';
@@ -35,7 +36,12 @@ export function getSavedSupabaseConfig() {
   };
 }
 
-export function saveSupabaseConfig(url: string, anonKey: string) {
+export function saveSupabaseConfig(url: string, anonKey: string, user?: UserProfile) {
+  const active = user || getActiveUser();
+  if (active.role !== 'admin') {
+    throw new Error('Доступ запрещен: настройки подключения к Supabase может менять только администратор');
+  }
+
   if (url) localStorage.setItem(STORAGE_KEY_URL, url.trim());
   else localStorage.removeItem(STORAGE_KEY_URL);
 
@@ -115,13 +121,16 @@ export function getActiveUser(): UserProfile {
   const saved = localStorage.getItem(STORAGE_KEY_ACTIVE_USER);
   if (saved) {
     try {
-      return JSON.parse(saved);
+      const parsed = JSON.parse(saved);
+      if (parsed && parsed.id && parsed.role) {
+        return parsed;
+      }
     } catch (e) {
       // fallback
     }
   }
-  // Default to the admin account requested by user
-  return DEMO_USERS[0];
+  // Default to Guest (client without admin privileges)
+  return DEFAULT_GUEST_USER;
 }
 
 export function setActiveUser(user: UserProfile) {
@@ -147,8 +156,9 @@ export async function loginUser(email: string, pass: string): Promise<{ success:
       });
 
       if (!error && data.user) {
-        // Look up profile metadata or role
-        const role = (data.user.user_metadata?.role as UserRole) || (cleanEmail === DEFAULT_ADMIN_EMAIL ? 'admin' : 'client');
+        // Look up profile metadata or role; only DEFAULT_ADMIN_EMAIL can be admin
+        const isDefaultAdmin = cleanEmail === DEFAULT_ADMIN_EMAIL.toLowerCase();
+        const role: UserRole = isDefaultAdmin ? 'admin' : ((data.user.user_metadata?.role as UserRole) || 'client');
         const userProf: UserProfile = {
           id: data.user.id,
           name: data.user.user_metadata?.name || data.user.email?.split('@')[0] || 'Пользователь',
@@ -169,10 +179,14 @@ export async function loginUser(email: string, pass: string): Promise<{ success:
   // Fallback: check local registered users list
   const users = getRegisteredUsers();
   
-  // Direct check for admin thunderwoltt
-  if (cleanEmail === DEFAULT_ADMIN_EMAIL && cleanPass === DEFAULT_ADMIN_PASSWORD) {
-    const adminUser = users.find(u => u.email?.toLowerCase() === DEFAULT_ADMIN_EMAIL) || INITIAL_REGISTERED_USERS[0];
+  // Direct check for admin thunderwoltt with password
+  if (cleanEmail === DEFAULT_ADMIN_EMAIL.toLowerCase()) {
+    if (cleanPass !== DEFAULT_ADMIN_PASSWORD) {
+      return { success: false, message: 'Неверный пароль администратора' };
+    }
+    const adminUser = users.find(u => u.email?.toLowerCase() === DEFAULT_ADMIN_EMAIL.toLowerCase()) || INITIAL_REGISTERED_USERS[0];
     const { password, ...safeUser } = adminUser;
+    safeUser.role = 'admin';
     setActiveUser(safeUser);
     await addAuditLog('Вход Администратора', `Администратор ${safeUser.email} успешно авторизован`, safeUser);
     return { success: true, user: safeUser };
@@ -188,6 +202,10 @@ export async function loginUser(email: string, pass: string): Promise<{ success:
   }
 
   const { password, ...safeUser } = found;
+  // Security guard: ensure non-admin users cannot have admin role
+  if (safeUser.role === 'admin' && safeUser.email?.toLowerCase() !== DEFAULT_ADMIN_EMAIL.toLowerCase()) {
+    safeUser.role = 'client';
+  }
   setActiveUser(safeUser);
   await addAuditLog('Вход в систему', `Пользователь ${safeUser.name} (${safeUser.role}) вошел в систему`, safeUser);
   return { success: true, user: safeUser };
@@ -198,7 +216,6 @@ export async function registerUser(params: {
   phone: string;
   email: string;
   password: string;
-  role?: UserRole;
 }): Promise<{ success: boolean; user?: UserProfile; message?: string }> {
   const cleanEmail = params.email.trim().toLowerCase();
   const cleanPass = params.password.trim();
@@ -213,8 +230,13 @@ export async function registerUser(params: {
     return { success: false, message: 'Пароль должен содержать минимум 6 символов' };
   }
 
-  // If email is thunderwoltt@gmail.com, automatically promote to admin
-  const userRole: UserRole = cleanEmail === DEFAULT_ADMIN_EMAIL ? 'admin' : (params.role || 'client');
+  // Security guard: ordinary users can NEVER register as admin
+  if (cleanEmail === DEFAULT_ADMIN_EMAIL.toLowerCase()) {
+    return { success: false, message: 'Этот email зарезервирован системой. Пожалуйста, используйте форму входа.' };
+  }
+
+  // All public registrations are strictly 'client' role
+  const userRole: UserRole = 'client';
 
   // Check if email already registered locally
   const currentUsers = getRegisteredUsers();
@@ -235,7 +257,7 @@ export async function registerUser(params: {
           data: {
             name: cleanName,
             phone: cleanPhone,
-            role: userRole,
+            role: 'client',
           },
         },
       });
@@ -253,8 +275,8 @@ export async function registerUser(params: {
     phone: cleanPhone,
     email: cleanEmail,
     password: cleanPass,
-    role: userRole,
-    bonus_points: 300, // starting bonus for new users
+    role: 'client',
+    bonus_points: 300, // starting bonus for new clients
     avatar_url: `https://images.unsplash.com/photo-1535713875002-d1d0cf377fde?auto=format&fit=crop&w=400&q=80`,
     created_at: new Date().toISOString(),
   };
@@ -264,7 +286,7 @@ export async function registerUser(params: {
 
   const { password, ...safeUser } = newUser;
   setActiveUser(safeUser);
-  await addAuditLog('Регистрация аккаунта', `Создан новый аккаунт: ${safeUser.name} (${safeUser.email}) с ролью ${safeUser.role}`, safeUser);
+  await addAuditLog('Регистрация клиента', `Создан новый аккаунт клиента: ${safeUser.name} (${safeUser.email})`, safeUser);
 
   return { success: true, user: safeUser };
 }
@@ -278,13 +300,17 @@ export async function logoutUser(): Promise<void> {
       // ignore
     }
   }
-  // Set default client or guest
-  const defaultClient = DEMO_USERS.find(u => u.role === 'client') || DEMO_USERS[0];
-  setActiveUser(defaultClient);
+  localStorage.removeItem(STORAGE_KEY_ACTIVE_USER);
+  setActiveUser(DEFAULT_GUEST_USER);
 }
 
 // --- Audit Logs ---
-export async function fetchAuditLogs(): Promise<AuditLog[]> {
+export async function fetchAuditLogs(user?: UserProfile): Promise<AuditLog[]> {
+  const active = user || getActiveUser();
+  if (active.role !== 'admin') {
+    return [];
+  }
+
   const client = getClient();
   if (client) {
     try {
@@ -352,14 +378,16 @@ export async function fetchSiteSettings(): Promise<SiteSettings> {
 }
 
 export async function saveSiteSettings(settings: SiteSettings, user: UserProfile): Promise<boolean> {
+  if (!user || user.role !== 'admin') {
+    throw new Error('Доступ запрещен: требуется роль администратора');
+  }
+
   const client = getClient();
-  let ok = false;
   if (client) {
     try {
-      const { error } = await client
+      await client
         .from('site_settings')
         .upsert([{ id: 1, ...settings }]);
-      if (!error) ok = true;
     } catch (e) {
       // ignore
     }
@@ -391,6 +419,10 @@ export async function fetchBarbers(): Promise<{ data: Barber[]; isSupabase: bool
 }
 
 export async function saveBarber(barber: Barber, user: UserProfile): Promise<boolean> {
+  if (!user || user.role !== 'admin') {
+    throw new Error('Доступ запрещен: требуется роль администратора');
+  }
+
   const client = getClient();
   if (client) {
     try {
@@ -413,6 +445,10 @@ export async function saveBarber(barber: Barber, user: UserProfile): Promise<boo
 }
 
 export async function deleteBarber(id: string, user: UserProfile): Promise<boolean> {
+  if (!user || user.role !== 'admin') {
+    throw new Error('Доступ запрещен: требуется роль администратора');
+  }
+
   const client = getClient();
   if (client) {
     try {
@@ -453,6 +489,10 @@ export async function fetchServices(): Promise<{ data: Service[]; isSupabase: bo
 }
 
 export async function saveService(service: Service, user: UserProfile): Promise<boolean> {
+  if (!user || user.role !== 'admin') {
+    throw new Error('Доступ запрещен: требуется роль администратора');
+  }
+
   const client = getClient();
   if (client) {
     try {
@@ -475,6 +515,10 @@ export async function saveService(service: Service, user: UserProfile): Promise<
 }
 
 export async function deleteService(id: string, user: UserProfile): Promise<boolean> {
+  if (!user || user.role !== 'admin') {
+    throw new Error('Доступ запрещен: требуется роль администратора');
+  }
+
   const client = getClient();
   if (client) {
     try {
@@ -529,25 +573,68 @@ export async function createBooking(booking: Omit<Booking, 'id' | 'created_at'>)
   return { booking: newBooking, isSupabase: false };
 }
 
-export async function fetchAllBookings(): Promise<{ data: Booking[]; isSupabase: boolean }> {
+export async function fetchAllBookings(user?: UserProfile): Promise<{ data: Booking[]; isSupabase: boolean }> {
+  const active = user || getActiveUser();
+  // Privacy & security check: guest cannot view bookings
+  if (!active || active.id === 'guest') {
+    return { data: [], isSupabase: false };
+  }
+
+  let allData: Booking[] = [];
+  let isSupabase = false;
+
   const client = getClient();
   if (client) {
     try {
-      const { data, error } = await client
-        .from('bookings')
-        .select('*')
-        .order('booking_date', { ascending: false });
+      let query = client.from('bookings').select('*').order('booking_date', { ascending: false });
 
+      // If client: request only their own bookings
+      if (active.role === 'client') {
+        if (active.email) {
+          query = query.eq('client_email', active.email);
+        } else if (active.phone) {
+          query = query.eq('client_phone', active.phone);
+        }
+      } else if (active.role === 'master' && active.barber_id) {
+        query = query.eq('barber_id', active.barber_id);
+      }
+
+      const { data, error } = await query;
       if (!error && data) {
-        return { data, isSupabase: true };
+        allData = data;
+        isSupabase = true;
       }
     } catch (e) {
       console.warn('Supabase fetchAllBookings fallback:', e);
     }
   }
 
-  const saved = localStorage.getItem(STORAGE_KEY_LOCAL_BOOKINGS);
-  return { data: saved ? JSON.parse(saved) : [], isSupabase: false };
+  if (!isSupabase) {
+    const saved = localStorage.getItem(STORAGE_KEY_LOCAL_BOOKINGS);
+    allData = saved ? JSON.parse(saved) : [];
+  }
+
+  // Filter strictly based on user role
+  if (active.role === 'client') {
+    const filtered = allData.filter(b => 
+      (active.email && b.client_email && b.client_email.toLowerCase() === active.email.toLowerCase()) ||
+      (active.phone && b.client_phone && b.client_phone.replace(/\D/g, '') === active.phone.replace(/\D/g, ''))
+    );
+    return { data: filtered, isSupabase };
+  }
+
+  if (active.role === 'master') {
+    const filtered = allData.filter(b => 
+      b.barber_id === active.barber_id || b.barber_name === active.name
+    );
+    return { data: filtered, isSupabase };
+  }
+
+  if (active.role === 'admin') {
+    return { data: allData, isSupabase };
+  }
+
+  return { data: [], isSupabase: false };
 }
 
 export async function updateBookingStatus(
@@ -589,13 +676,18 @@ export async function cancelBooking(id: string, user?: UserProfile): Promise<boo
 }
 
 // --- Backup & Restore (JSON Dump) ---
-export async function exportDatabaseBackup(): Promise<string> {
+export async function exportDatabaseBackup(user?: UserProfile): Promise<string> {
+  const active = user || getActiveUser();
+  if (active.role !== 'admin') {
+    throw new Error('Доступ запрещен: требуется роль администратора');
+  }
+
   const [barbers, services, bookings, settings, logs] = await Promise.all([
     fetchBarbers(),
     fetchServices(),
-    fetchAllBookings(),
+    fetchAllBookings(active),
     fetchSiteSettings(),
-    fetchAuditLogs(),
+    fetchAuditLogs(active),
   ]);
 
   const backupData = {
@@ -612,6 +704,10 @@ export async function exportDatabaseBackup(): Promise<string> {
 }
 
 export async function restoreDatabaseBackup(jsonString: string, user: UserProfile): Promise<{ success: boolean; message: string }> {
+  if (!user || user.role !== 'admin') {
+    return { success: false, message: 'Доступ запрещен: требуется роль администратора' };
+  }
+
   try {
     const parsed = JSON.parse(jsonString);
     if (!parsed || !parsed.services || !parsed.barbers) {

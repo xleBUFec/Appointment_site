@@ -1,9 +1,7 @@
 import React, { useState, useEffect } from 'react';
-import { UserRole, UserProfile, Booking, Service, Barber, SiteSettings, AuditLog, RegisteredUser } from '../../types';
+import { UserProfile, Booking, Service, Barber, SiteSettings, AuditLog } from '../../types';
 import { 
   getActiveUser, 
-  setActiveUser, 
-  getRegisteredUsers,
   fetchBarbers, 
   fetchServices, 
   fetchAllBookings, 
@@ -33,8 +31,8 @@ import {
   User, 
   RefreshCw,
   LogIn,
-  UserPlus,
-  KeyRound
+  Lock,
+  LogOut
 } from 'lucide-react';
 
 interface AdminDashboardProps {
@@ -43,7 +41,8 @@ interface AdminDashboardProps {
   isSupabaseConnected: boolean;
   onRepeatBooking?: (serviceName: string, barberName: string) => void;
   onOpenAuth?: () => void;
-  onUserChanged?: (user: UserProfile) => void;
+  onOpenSettings?: () => void;
+  onLogout?: () => void;
 }
 
 export const AdminDashboard: React.FC<AdminDashboardProps> = ({
@@ -52,11 +51,11 @@ export const AdminDashboard: React.FC<AdminDashboardProps> = ({
   isSupabaseConnected,
   onRepeatBooking,
   onOpenAuth,
-  onUserChanged,
+  onOpenSettings,
+  onLogout,
 }) => {
   const [currentUser, setCurrentUserState] = useState<UserProfile>(getActiveUser());
   const [activeTab, setActiveTab] = useState<string>('overview');
-  const [registeredUsers, setRegisteredUsers] = useState<RegisteredUser[]>([]);
 
   const [bookings, setBookings] = useState<Booking[]>([]);
   const [services, setServices] = useState<Service[]>([]);
@@ -69,14 +68,13 @@ export const AdminDashboard: React.FC<AdminDashboardProps> = ({
     setLoading(true);
     const active = getActiveUser();
     setCurrentUserState(active);
-    setRegisteredUsers(getRegisteredUsers());
 
     const [bRes, sRes, bkRes, setRes, lRes] = await Promise.all([
       fetchBarbers(),
       fetchServices(),
-      fetchAllBookings(),
+      fetchAllBookings(active),
       fetchSiteSettings(),
-      fetchAuditLogs(),
+      fetchAuditLogs(active),
     ]);
 
     setBarbers(bRes.data);
@@ -89,9 +87,9 @@ export const AdminDashboard: React.FC<AdminDashboardProps> = ({
 
   useEffect(() => {
     if (isOpen) {
-      loadAllData();
       const active = getActiveUser();
-      // Set initial tab depending on user role
+      setCurrentUserState(active);
+      loadAllData();
       if (active.role === 'admin') setActiveTab('overview');
       else if (active.role === 'master') setActiveTab('master_schedule');
       else setActiveTab('client_cabinet');
@@ -100,16 +98,11 @@ export const AdminDashboard: React.FC<AdminDashboardProps> = ({
 
   if (!isOpen) return null;
 
-  const handleSwitchUser = (user: RegisteredUser | UserProfile) => {
-    const { password, ...safeUser } = (user as any);
-    setActiveUser(safeUser);
-    setCurrentUserState(safeUser);
-    if (onUserChanged) onUserChanged(safeUser);
-
-    if (safeUser.role === 'admin') setActiveTab('overview');
-    else if (safeUser.role === 'master') setActiveTab('master_schedule');
-    else setActiveTab('client_cabinet');
-  };
+  const isAuthenticated = currentUser.id !== 'guest' && Boolean(currentUser.email);
+  const isAdmin = isAuthenticated && currentUser.role === 'admin';
+  const isMaster = isAuthenticated && currentUser.role === 'master';
+  const isClient = isAuthenticated && currentUser.role === 'client';
+  const isThunderwolttAdmin = currentUser.email?.toLowerCase() === DEFAULT_ADMIN_EMAIL.toLowerCase();
 
   const adminTabs = [
     { id: 'overview', label: 'Дашборд & Выручка', icon: LayoutDashboard },
@@ -120,8 +113,6 @@ export const AdminDashboard: React.FC<AdminDashboardProps> = ({
     { id: 'logs', label: 'Журнал аудита', icon: History },
     { id: 'backups', label: 'Резервные копии', icon: Database },
   ];
-
-  const isThunderwolttAdmin = currentUser.email?.toLowerCase() === DEFAULT_ADMIN_EMAIL.toLowerCase();
 
   return (
     <div className="fixed inset-0 z-50 flex items-center justify-center p-2 sm:p-4 bg-black/85 backdrop-blur-md animate-in fade-in duration-200">
@@ -141,75 +132,57 @@ export const AdminDashboard: React.FC<AdminDashboardProps> = ({
                   BLADE & CO.
                 </h2>
                 <span className="text-[10px] px-2 py-0.5 rounded-full bg-[#21262d] text-[#c59b27] font-semibold border border-[#c59b27]/30 flex items-center gap-1">
-                  {currentUser.role === 'admin' ? (
+                  {isAdmin ? (
                     <>
                       <ShieldCheck className="w-3 h-3 text-[#c59b27]" />
                       <span>{isThunderwolttAdmin ? 'Главный Администратор' : 'Администратор'}</span>
                     </>
-                  ) : currentUser.role === 'master' ? (
+                  ) : isMaster ? (
                     'Кабинет мастера'
+                  ) : isClient ? (
+                    'Личный кабинет клиента'
                   ) : (
-                    'Личный кабинет'
+                    'Вход в систему'
                   )}
                 </span>
               </div>
               <p className="text-[11px] text-[#8b949e]">
-                {currentUser.name} ({currentUser.email || 'без email'})
+                {isAuthenticated ? `${currentUser.name} (${currentUser.email})` : 'Требуется авторизация'}
               </p>
             </div>
           </div>
 
-          {/* User selector & Login / Register actions */}
-          <div className="flex items-center gap-2 flex-wrap">
+          {/* Right Header Controls */}
+          <div className="flex items-center gap-2">
             
-            {/* Quick Switch from registered users */}
-            <div className="flex items-center gap-1.5 bg-[#161b22] p-1 rounded-2xl border border-[#21262d] max-w-sm sm:max-w-none overflow-x-auto">
-              <span className="text-[10px] text-[#8b949e] uppercase font-semibold px-2 hidden md:inline">
-                Аккаунт:
-              </span>
-              {registeredUsers.slice(0, 4).map(u => {
-                const isSelected = (currentUser.email && u.email && currentUser.email.toLowerCase() === u.email.toLowerCase()) || currentUser.id === u.id;
-                const isAdmin = u.role === 'admin';
-                return (
-                  <button
-                    key={u.id}
-                    onClick={() => handleSwitchUser(u)}
-                    className={`px-2.5 py-1.5 rounded-xl text-xs font-semibold transition-all flex items-center gap-1.5 whitespace-nowrap ${
-                      isSelected
-                        ? 'bg-[#c59b27] text-black shadow-md'
-                        : 'text-[#8b949e] hover:text-[#f8f5ee] hover:bg-[#21262d]'
-                    }`}
-                    title={`${u.name} (${u.email}) - ${u.role}`}
-                  >
-                    {isAdmin ? <ShieldCheck className="w-3.5 h-3.5" /> : <User className="w-3.5 h-3.5" />}
-                    <span>{u.name.split(' ')[0]}</span>
-                    <span className="text-[10px] opacity-75">
-                      ({u.role === 'admin' ? 'Админ' : u.role === 'master' ? 'Мастер' : 'Клиент'})
-                    </span>
-                  </button>
-                );
-              })}
-            </div>
-
-            {/* Open Auth Modal */}
-            {onOpenAuth && (
+            {/* Supabase settings quick link for admin only */}
+            {isAdmin && onOpenSettings && (
               <button
-                onClick={() => {
-                  onClose();
-                  onOpenAuth();
-                }}
-                className="flex items-center gap-1 px-3 py-1.5 rounded-xl border border-[#30363d] bg-[#21262d] hover:bg-[#2b313a] text-xs font-medium text-[#f8f5ee] transition-all"
-                title="Войти или создать новый аккаунт"
+                onClick={onOpenSettings}
+                className="flex items-center gap-1.5 px-3 py-1.5 rounded-xl border border-emerald-500/30 bg-emerald-950/40 text-emerald-400 hover:bg-emerald-900/50 text-xs font-medium transition-all"
+                title="Настройки подключения к базе данных Supabase"
               >
-                <LogIn className="w-3.5 h-3.5 text-[#c59b27]" />
-                <span className="hidden sm:inline">Войти / Создать</span>
+                <Database className="w-3.5 h-3.5" />
+                <span className="hidden sm:inline">База Supabase</span>
               </button>
             )}
 
-          </div>
+            {/* Logout button if authenticated */}
+            {isAuthenticated && onLogout && (
+              <button
+                onClick={() => {
+                  onLogout();
+                  onClose();
+                }}
+                className="flex items-center gap-1.5 px-3 py-1.5 rounded-xl border border-[#30363d] bg-[#21262d] hover:bg-red-950/40 hover:text-red-300 text-xs text-[#8b949e] transition-all"
+                title="Выйти из аккаунта"
+              >
+                <LogOut className="w-3.5 h-3.5" />
+                <span className="hidden sm:inline">Выйти</span>
+              </button>
+            )}
 
-          {/* Close & Refresh */}
-          <div className="flex items-center gap-2">
+            {/* Refresh */}
             <button
               onClick={loadAllData}
               disabled={loading}
@@ -218,6 +191,8 @@ export const AdminDashboard: React.FC<AdminDashboardProps> = ({
             >
               <RefreshCw className={`w-4 h-4 ${loading ? 'animate-spin' : ''}`} />
             </button>
+
+            {/* Close */}
             <button
               onClick={onClose}
               className="p-2 rounded-xl text-[#8b949e] hover:text-[#f8f5ee] hover:bg-[#21262d] transition-colors"
@@ -228,11 +203,11 @@ export const AdminDashboard: React.FC<AdminDashboardProps> = ({
 
         </div>
 
-        {/* Content body with responsive sidebar */}
+        {/* Content body */}
         <div className="flex-1 flex flex-col md:flex-row overflow-hidden">
           
-          {/* Sidebar Tabs (Only shown for Admin, Master/Client have tailored views) */}
-          {currentUser.role === 'admin' && (
+          {/* Admin Sidebar (ONLY SHOWN FOR VERIFIED ADMINISTRATOR) */}
+          {isAdmin && (
             <div className="w-full md:w-64 border-b md:border-b-0 md:border-r border-[#21262d] p-3 space-y-1 bg-[#0e1117]/60 overflow-x-auto md:overflow-y-auto flex md:flex-col flex-row flex-shrink-0">
               {adminTabs.map(tab => {
                 const Icon = tab.icon;
@@ -272,10 +247,35 @@ export const AdminDashboard: React.FC<AdminDashboardProps> = ({
                 <RefreshCw className="w-6 h-6 animate-spin text-[#c59b27]" />
                 <span>Загрузка данных...</span>
               </div>
+            ) : !isAuthenticated ? (
+              /* GUEST / UNAUTHENTICATED LOCKED VIEW */
+              <div className="h-full flex flex-col items-center justify-center py-16 px-4 text-center max-w-md mx-auto">
+                <div className="w-14 h-14 rounded-2xl bg-amber-500/10 border border-amber-500/30 text-[#c59b27] flex items-center justify-center mb-4 shadow-lg shadow-[#c59b27]/10">
+                  <Lock className="w-7 h-7" />
+                </div>
+                <h3 className="font-serif text-xl font-bold text-[#f8f5ee] mb-2">
+                  Доступ ограничен
+                </h3>
+                <p className="text-xs text-[#8b949e] mb-6 leading-relaxed">
+                  Панель управления и личный кабинет доступны только зарегистрированным пользователям. Пожалуйста, выполните вход в свой аккаунт.
+                </p>
+                {onOpenAuth && (
+                  <button
+                    onClick={() => {
+                      onClose();
+                      onOpenAuth();
+                    }}
+                    className="gold-button text-black font-bold text-xs px-6 py-2.5 rounded-xl shadow-lg flex items-center gap-2"
+                  >
+                    <LogIn className="w-4 h-4" />
+                    <span>Войти в аккаунт</span>
+                  </button>
+                )}
+              </div>
             ) : (
               <>
-                {/* Admin views */}
-                {currentUser.role === 'admin' && (
+                {/* ADMIN VIEWS (CMS, CRM, Settings, Team, Backups) */}
+                {isAdmin && (
                   <>
                     {activeTab === 'overview' && (
                       <AdminOverview
@@ -331,8 +331,8 @@ export const AdminDashboard: React.FC<AdminDashboardProps> = ({
                   </>
                 )}
 
-                {/* Master view */}
-                {currentUser.role === 'master' && (
+                {/* MASTER VIEW (Schedule, clients) */}
+                {isMaster && (
                   <MasterCabinet
                     currentUser={currentUser}
                     barbers={barbers}
@@ -341,8 +341,8 @@ export const AdminDashboard: React.FC<AdminDashboardProps> = ({
                   />
                 )}
 
-                {/* Client view */}
-                {currentUser.role === 'client' && (
+                {/* CLIENT VIEW (Bookings history, cancel, bonus points) */}
+                {isClient && (
                   <ClientCabinet
                     currentUser={currentUser}
                     bookings={bookings}

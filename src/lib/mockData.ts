@@ -20,6 +20,15 @@ export const INITIAL_SITE_SETTINGS: SiteSettings = {
 export const DEFAULT_ADMIN_EMAIL = 'thunderwoltt@gmail.com';
 export const DEFAULT_ADMIN_PASSWORD = 'Qazwsx123';
 
+export const DEFAULT_GUEST_USER: UserProfile = {
+  id: 'guest',
+  name: 'Гость',
+  email: '',
+  phone: '',
+  role: 'client',
+  bonus_points: 0,
+};
+
 export const INITIAL_REGISTERED_USERS: RegisteredUser[] = [
   {
     id: 'user-admin-thunderwoltt',

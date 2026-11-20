@@ -332,12 +332,24 @@ export function App() {
         <div className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8 pt-8 mt-8 border-t border-[#21262d] flex flex-col sm:flex-row items-center justify-between text-xs text-[#8b949e]">
           <div>© {new Date().getFullYear()} BLADE & CO. Все права защищены.</div>
           <div className="flex gap-4 mt-2 sm:mt-0">
-            <span className="cursor-pointer hover:text-[#f8f5ee]" onClick={() => setIsSettingsOpen(true)}>
-              Настройка базы Supabase
-            </span>
-            <span className="cursor-pointer text-[#c59b27] hover:underline" onClick={() => setIsAdminOpen(true)}>
-              Панель управления & Кабинет
-            </span>
+            {currentUser.role === 'admin' ? (
+              <>
+                <span className="cursor-pointer text-[#c59b27] hover:underline" onClick={() => setIsAdminOpen(true)}>
+                  Панель управления (CMS)
+                </span>
+                <span className="cursor-pointer hover:text-[#f8f5ee]" onClick={() => setIsSettingsOpen(true)}>
+                  Настройки Supabase
+                </span>
+              </>
+            ) : currentUser.id !== 'guest' && Boolean(currentUser.email) ? (
+              <span className="cursor-pointer text-[#c59b27] hover:underline" onClick={() => setIsAdminOpen(true)}>
+                Личный кабинет
+              </span>
+            ) : (
+              <span className="cursor-pointer hover:text-[#c59b27]" onClick={() => setIsAuthOpen(true)}>
+                Вход для клиентов и персонала
+              </span>
+            )}
           </div>
         </div>
       </footer>
@@ -358,6 +370,7 @@ export function App() {
         isOpen={isSettingsOpen}
         onClose={() => setIsSettingsOpen(false)}
         onConfigUpdated={loadData}
+        currentUser={currentUser}
       />
 
       <AdminDashboard
@@ -366,7 +379,8 @@ export function App() {
         isSupabaseConnected={isSupabaseConnected}
         onRepeatBooking={handleRepeatBooking}
         onOpenAuth={() => setIsAuthOpen(true)}
-        onUserChanged={(user) => setCurrentUser(user)}
+        onOpenSettings={() => setIsSettingsOpen(true)}
+        onLogout={handleLogout}
       />
 
       <AuthModal
