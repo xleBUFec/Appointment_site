@@ -77,6 +77,37 @@ CREATE TABLE IF NOT EXISTS public.audit_logs (
     details TEXT
 );
 
+-- ========================================================
+-- Автоматическое добавление недостающих колонок, если таблицы были созданы ранее
+-- ========================================================
+ALTER TABLE public.barbers ADD COLUMN IF NOT EXISTS active BOOLEAN DEFAULT true;
+ALTER TABLE public.barbers ADD COLUMN IF NOT EXISTS bio TEXT;
+ALTER TABLE public.barbers ADD COLUMN IF NOT EXISTS rating NUMERIC(3,2) DEFAULT 4.95;
+ALTER TABLE public.barbers ADD COLUMN IF NOT EXISTS experience TEXT;
+ALTER TABLE public.barbers ADD COLUMN IF NOT EXISTS created_at TIMESTAMPTZ DEFAULT now();
+
+ALTER TABLE public.services ADD COLUMN IF NOT EXISTS popular BOOLEAN DEFAULT false;
+ALTER TABLE public.services ADD COLUMN IF NOT EXISTS active BOOLEAN DEFAULT true;
+ALTER TABLE public.services ADD COLUMN IF NOT EXISTS description TEXT;
+ALTER TABLE public.services ADD COLUMN IF NOT EXISTS created_at TIMESTAMPTZ DEFAULT now();
+
+ALTER TABLE public.bookings ADD COLUMN IF NOT EXISTS client_email TEXT;
+ALTER TABLE public.bookings ADD COLUMN IF NOT EXISTS service_id TEXT;
+ALTER TABLE public.bookings ADD COLUMN IF NOT EXISTS barber_id TEXT;
+ALTER TABLE public.bookings ADD COLUMN IF NOT EXISTS comment TEXT;
+ALTER TABLE public.bookings ADD COLUMN IF NOT EXISTS status TEXT DEFAULT 'confirmed';
+ALTER TABLE public.bookings ADD COLUMN IF NOT EXISTS created_at TIMESTAMPTZ DEFAULT now();
+
+ALTER TABLE public.site_settings ADD COLUMN IF NOT EXISTS announcement_banner TEXT;
+ALTER TABLE public.site_settings ADD COLUMN IF NOT EXISTS announcement_active BOOLEAN DEFAULT true;
+ALTER TABLE public.site_settings ADD COLUMN IF NOT EXISTS promo_code TEXT;
+ALTER TABLE public.site_settings ADD COLUMN IF NOT EXISTS promo_discount_percent INTEGER DEFAULT 20;
+ALTER TABLE public.site_settings ADD COLUMN IF NOT EXISTS telegram TEXT;
+ALTER TABLE public.site_settings ADD COLUMN IF NOT EXISTS seo_title TEXT;
+ALTER TABLE public.site_settings ADD COLUMN IF NOT EXISTS seo_description TEXT;
+ALTER TABLE public.site_settings ADD COLUMN IF NOT EXISTS seo_keywords TEXT;
+ALTER TABLE public.site_settings ADD COLUMN IF NOT EXISTS updated_at TIMESTAMPTZ DEFAULT now();
+
 -- 6. Включение Row Level Security (RLS) и безопасные политики доступа
 ALTER TABLE public.barbers ENABLE ROW LEVEL SECURITY;
 ALTER TABLE public.services ENABLE ROW LEVEL SECURITY;
