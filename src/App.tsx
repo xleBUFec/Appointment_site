@@ -19,6 +19,12 @@ import { BookingSuccessModal } from './components/BookingSuccessModal';
 import { SupabaseSettingsModal } from './components/SupabaseSettingsModal';
 import { AdminDashboard } from './components/admin/AdminDashboard';
 import { AuthModal } from './components/AuthModal';
+import { GallerySection } from './components/GallerySection';
+import { ReviewsSection } from './components/ReviewsSection';
+import { LoyaltySection } from './components/LoyaltySection';
+import { FaqSection } from './components/FaqSection';
+import { LocationSection } from './components/LocationSection';
+import { MobileQuickBar } from './components/MobileQuickBar';
 import { Scissors, CheckCircle, MapPin, Phone, Clock, Globe, Send, ShieldCheck, Sparkles } from 'lucide-react';
 
 export function App() {
@@ -266,6 +272,8 @@ export function App() {
                   selectedDate={selectedDate}
                   selectedTime={selectedTime}
                   isSupabaseConnected={isSupabaseConnected}
+                  currentUser={currentUser}
+                  settings={settings}
                   onSubmit={handleBookingSubmit}
                   onBack={() => setStep(3)}
                   isLoading={isSubmitting}
@@ -276,6 +284,21 @@ export function App() {
         </div>
 
       </main>
+
+      {/* 1. Portfolio & Atmosphere Gallery */}
+      <GallerySection onSelectServiceAndBook={scrollToBooking} />
+
+      {/* 2. Gentlemen's Loyalty Club & Bonus Card */}
+      <LoyaltySection currentUser={currentUser} onOpenAuth={() => setIsAuthOpen(true)} />
+
+      {/* 3. Client Reviews & Rating */}
+      <ReviewsSection currentUser={currentUser} onOpenAuth={() => setIsAuthOpen(true)} />
+
+      {/* 4. Frequently Asked Questions (FAQ) */}
+      <FaqSection settings={settings} onStartBooking={scrollToBooking} />
+
+      {/* 5. Location, Route & Working Hours */}
+      <LocationSection settings={settings} onStartBooking={scrollToBooking} />
 
       {/* Footer */}
       <footer className="bg-[#0e1117] border-t border-[#21262d] py-12 mt-20">
@@ -388,6 +411,9 @@ export function App() {
         onClose={() => setIsAuthOpen(false)}
         onSuccess={handleAuthSuccess}
       />
+
+      {/* Mobile Floating Quick Booking Bar */}
+      <MobileQuickBar settings={settings} onScrollToBooking={scrollToBooking} />
 
     </div>
   );

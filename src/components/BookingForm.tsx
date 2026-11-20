@@ -1,6 +1,21 @@
-import React, { useState } from 'react';
-import { Service, Barber } from '../types';
-import { ShieldCheck, User, Phone, Mail, MessageSquare, Clock, Calendar, Check, Loader2, Database } from 'lucide-react';
+import React, { useState, useEffect } from 'react';
+import { Service, Barber, SiteSettings, UserProfile } from '../types';
+import { 
+  ShieldCheck, 
+  User, 
+  Phone, 
+  Mail, 
+  MessageSquare, 
+  Clock, 
+  Calendar, 
+  Check, 
+  Loader2, 
+  Database,
+  Tag,
+  Sparkles,
+  Bell,
+  CheckCircle2
+} from 'lucide-react';
 
 interface BookingFormProps {
   selectedService: Service;
@@ -8,6 +23,8 @@ interface BookingFormProps {
   selectedDate: string;
   selectedTime: string;
   isSupabaseConnected: boolean;
+  currentUser?: UserProfile;
+  settings?: SiteSettings | null;
   onSubmit: (formData: {
     client_name: string;
     client_phone: string;
@@ -24,15 +41,32 @@ export const BookingForm: React.FC<BookingFormProps> = ({
   selectedDate,
   selectedTime,
   isSupabaseConnected,
+  currentUser,
+  settings,
   onSubmit,
   onBack,
   isLoading,
 }) => {
-  const [name, setName] = useState('');
-  const [phone, setPhone] = useState('+7 ');
-  const [email, setEmail] = useState('');
+  const [name, setName] = useState(currentUser?.name && currentUser.id !== 'guest' ? currentUser.name : '');
+  const [phone, setPhone] = useState(currentUser?.phone ? currentUser.phone : '+7 ');
+  const [email, setEmail] = useState(currentUser?.email ? currentUser.email : '');
   const [comment, setComment] = useState('');
+  const [reminder, setReminder] = useState(true);
+
+  // Promo Code State
+  const [promoInput, setPromoInput] = useState('');
+  const [promoApplied, setPromoApplied] = useState(false);
+  const [promoError, setPromoError] = useState<string | null>(null);
+
   const [error, setError] = useState('');
+
+  useEffect(() => {
+    if (currentUser && currentUser.id !== 'guest') {
+      if (!name && currentUser.name) setName(currentUser.name);
+      if ((phone === '+7 ' || !phone) && currentUser.phone) setPhone(currentUser.phone);
+      if (!email && currentUser.email) setEmail(currentUser.email);
+    }
+  }, [currentUser]);
 
   // Format Russian phone number
   const handlePhoneChange = (e: React.ChangeEvent<HTMLInputElement>) => {
@@ -42,6 +76,27 @@ export const BookingForm: React.FC<BookingFormProps> = ({
     }
     setPhone(val);
   };
+
+  const activePromo = (settings?.promo_code || 'FIRST20').toUpperCase();
+  const discountPercent = settings?.promo_discount_percent || 20;
+
+  const handleApplyPromo = () => {
+    setPromoError(null);
+    const clean = promoInput.trim().toUpperCase();
+    if (!clean) return;
+
+    if (clean === activePromo) {
+      setPromoApplied(true);
+      setPromoError(null);
+    } else {
+      setPromoApplied(false);
+      setPromoError('Неверный промокод');
+    }
+  };
+
+  const finalPrice = promoApplied 
+    ? Math.round(selectedService.price * (1 - discountPercent / 100))
+    : selectedService.price;
 
   const handleSubmit = async (e: React.FormEvent) => {
     e.preventDefault();
@@ -54,11 +109,20 @@ export const BookingForm: React.FC<BookingFormProps> = ({
       return;
     }
     setError('');
+
+    let finalComment = comment.trim();
+    if (promoApplied) {
+      finalComment = `[Промокод ${activePromo} -${discountPercent}%] ${finalComment}`;
+    }
+    if (reminder) {
+      finalComment = `${finalComment} (Напоминание за 2 часа: Да)`.trim();
+    }
+
     await onSubmit({
       client_name: name.trim(),
       client_phone: phone.trim(),
       client_email: email.trim(),
-      comment: comment.trim(),
+      comment: finalComment,
     });
   };
 
@@ -75,9 +139,17 @@ export const BookingForm: React.FC<BookingFormProps> = ({
         
         {/* Contact fields (left column) */}
         <div className="lg:col-span-7 space-y-5">
-          <h3 className="font-serif text-xl font-bold text-[#f8f5ee]">
-            Контактные данные
-          </h3>
+          <div className="flex items-center justify-between">
+            <h3 className="font-serif text-xl font-bold text-[#f8f5ee]">
+              Контактные данные
+            </h3>
+            {currentUser && currentUser.id !== 'guest' && (
+              <span className="text-[11px] text-emerald-400 font-medium flex items-center gap-1 bg-emerald-950/40 px-2.5 py-1 rounded-full border border-emerald-500/30">
+                <CheckCircle2 className="w-3.5 h-3.5" />
+                Автозаполнено из профиля
+              </span>
+            )}
+          </div>
 
           {error && (
             <div className="p-3.5 rounded-xl bg-red-950/40 border border-red-500/30 text-red-300 text-xs sm:text-sm">
@@ -141,6 +213,63 @@ export const BookingForm: React.FC<BookingFormProps> = ({
             </div>
           </div>
 
+          {/* Promo code input block */}
+          <div className="p-4 rounded-2xl bg-[#0e1117] border border-[#21262d] space-y-2">
+            <label className="block text-xs font-semibold text-[#8b949e] uppercase tracking-wider flex items-center justify-between">
+              <span className="flex items-center gap-1.5">
+                <Tag className="w-3.5 h-3.5 text-[#c59b27]" />
+                Промокод на скидку
+              </span>
+              <span className="text-[10px] text-[#c59b27] font-mono">
+                {activePromo} (-{discountPercent}%)
+              </span>
+            </label>
+
+            <div className="flex gap-2">
+              <input
+                type="text"
+                value={promoInput}
+                onChange={(e) => setPromoInput(e.target.value)}
+                placeholder={`Например: ${activePromo}`}
+                className="flex-1 bg-[#161b22] border border-[#21262d] rounded-xl px-3.5 py-2.5 text-xs text-[#f8f5ee] uppercase font-mono placeholder-[#484f58] focus:outline-none focus:border-[#c59b27]"
+              />
+              <button
+                type="button"
+                onClick={handleApplyPromo}
+                className="px-4 py-2.5 rounded-xl bg-[#21262d] hover:bg-[#30363d] text-xs font-semibold text-[#f8f5ee] transition-colors"
+              >
+                Применить
+              </button>
+            </div>
+
+            {promoApplied && (
+              <div className="text-[11px] text-emerald-400 flex items-center gap-1.5 font-medium pt-1">
+                <CheckCircle2 className="w-3.5 h-3.5" />
+                Скидка {discountPercent}% успешно применена!
+              </div>
+            )}
+            {promoError && (
+              <div className="text-[11px] text-red-400 pt-1">
+                {promoError}
+              </div>
+            )}
+          </div>
+
+          {/* Reminder checkbox */}
+          <div className="flex items-center gap-3 pt-1">
+            <input
+              type="checkbox"
+              id="reminder"
+              checked={reminder}
+              onChange={(e) => setReminder(e.target.checked)}
+              className="w-4 h-4 rounded border-[#30363d] bg-[#0e1117] text-[#c59b27] focus:ring-[#c59b27]"
+            />
+            <label htmlFor="reminder" className="text-xs text-[#8b949e] flex items-center gap-1.5 cursor-pointer">
+              <Bell className="w-3.5 h-3.5 text-[#c59b27]" />
+              Отправить бесплатное напоминание за 2 часа до визита
+            </label>
+          </div>
+
           <div>
             <label className="block text-xs font-semibold text-[#8b949e] uppercase tracking-wider mb-2">
               Пожелания или комментарий к записи
@@ -150,10 +279,10 @@ export const BookingForm: React.FC<BookingFormProps> = ({
                 <MessageSquare className="w-4 h-4" />
               </div>
               <textarea
-                rows={3}
+                rows={2}
                 value={comment}
                 onChange={(e) => setComment(e.target.value)}
-                placeholder="Например: желаемый стиль стрижки, чувствительная кожа или напиток к визиту"
+                placeholder="Желаемый стиль стрижки, напиток (кофе, виски) или пожелания"
                 className="w-full bg-[#161b22] border border-[#21262d] rounded-xl pl-10 pr-4 py-3 text-sm text-[#f8f5ee] placeholder-[#484f58] focus:outline-none focus:border-[#c59b27] focus:ring-1 focus:ring-[#c59b27]"
               />
             </div>
@@ -206,16 +335,28 @@ export const BookingForm: React.FC<BookingFormProps> = ({
             <div className="pt-3 border-t border-[#21262d] text-xs flex items-center gap-2 text-[#8b949e]">
               <Database className="w-3.5 h-3.5 text-[#c59b27]" />
               <span>
-                {isSupabaseConnected ? 'Синхронизация с базой Supabase' : 'Сохранение в локальное хранилище'}
+                {isSupabaseConnected ? 'Онлайн-синхронизация активна' : 'Автономное бронирование'}
               </span>
             </div>
 
-            {/* Total price */}
+            {/* Total price with discount */}
             <div className="pt-4 border-t border-[#21262d] flex items-baseline justify-between">
-              <span className="text-sm font-semibold text-[#8b949e]">К оплате на месте:</span>
-              <span className="text-2xl font-bold text-[#f8f5ee]">
-                {selectedService.price.toLocaleString('ru-RU')} ₽
-              </span>
+              <div>
+                <span className="text-xs font-semibold text-[#8b949e] block">К оплате на месте:</span>
+                {promoApplied && (
+                  <span className="text-xs text-emerald-400 font-medium">Скидка -{discountPercent}% учтена</span>
+                )}
+              </div>
+              <div className="text-right">
+                {promoApplied && (
+                  <span className="text-sm line-through text-[#8b949e] block">
+                    {selectedService.price.toLocaleString('ru-RU')} ₽
+                  </span>
+                )}
+                <span className="text-2xl font-bold text-[#c59b27]">
+                  {finalPrice.toLocaleString('ru-RU')} ₽
+                </span>
+              </div>
             </div>
 
             {/* Submit */}
