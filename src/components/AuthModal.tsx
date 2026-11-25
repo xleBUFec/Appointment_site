@@ -1,4 +1,4 @@
-import React, { useState } from 'react';
+import React, { useState, useEffect } from 'react';
 import { 
   X, 
   LogIn, 
@@ -11,10 +11,13 @@ import {
   CheckCircle2, 
   Eye, 
   EyeOff,
-  Scissors
+  Scissors,
+  ShieldAlert,
+  ShieldCheck
 } from 'lucide-react';
 import { UserProfile } from '../types';
 import { loginUser, registerUser } from '../lib/supabase';
+import { getLockoutStatus } from '../lib/security';
 
 interface AuthModalProps {
   isOpen: boolean;
@@ -41,6 +44,31 @@ export const AuthModal: React.FC<AuthModalProps> = ({
   const [loading, setLoading] = useState(false);
   const [error, setError] = useState<string | null>(null);
   const [successMsg, setSuccessMsg] = useState<string | null>(null);
+  const [lockoutSec, setLockoutSec] = useState<number>(0);
+
+  // Проверка статуса защиты от брутфорса при открытии модального окна
+  useEffect(() => {
+    if (isOpen) {
+      const status = getLockoutStatus();
+      setLockoutSec(status.remainingSec);
+    }
+  }, [isOpen]);
+
+  // Таймер обратного отсчета блокировки
+  useEffect(() => {
+    if (lockoutSec <= 0) return;
+    const interval = setInterval(() => {
+      setLockoutSec(prev => {
+        if (prev <= 1) {
+          clearInterval(interval);
+          setError(null);
+          return 0;
+        }
+        return prev - 1;
+      });
+    }, 1000);
+    return () => clearInterval(interval);
+  }, [lockoutSec]);
 
   if (!isOpen) return null;
 
@@ -57,6 +85,14 @@ export const AuthModal: React.FC<AuthModalProps> = ({
     e.preventDefault();
     setError(null);
     setSuccessMsg(null);
+
+    const status = getLockoutStatus();
+    if (status.isLocked) {
+      setLockoutSec(status.remainingSec);
+      setError(`Превышено количество попыток. Защита от перебора: подождите ${status.remainingSec} сек.`);
+      return;
+    }
+
     setLoading(true);
 
     try {
@@ -69,6 +105,10 @@ export const AuthModal: React.FC<AuthModalProps> = ({
           resetForm();
         }, 600);
       } else {
+        const updatedStatus = getLockoutStatus();
+        if (updatedStatus.isLocked) {
+          setLockoutSec(updatedStatus.remainingSec);
+        }
         setError(res.message || 'Ошибка входа. Проверьте введенные данные.');
       }
     } catch (err: any) {
@@ -178,7 +218,14 @@ export const AuthModal: React.FC<AuthModalProps> = ({
         <div className="p-6 overflow-y-auto max-h-[75vh]">
           
           {/* Feedback messages */}
-          {error && (
+          {lockoutSec > 0 && (
+            <div className="mb-4 p-3 rounded-xl bg-amber-950/60 border border-amber-500/50 flex items-center gap-2.5 text-xs text-amber-300">
+              <ShieldAlert className="w-4 h-4 flex-shrink-0 text-amber-400" />
+              <span>Защита от подбора паролей: система заблокирована на {lockoutSec} сек.</span>
+            </div>
+          )}
+
+          {error && lockoutSec <= 0 && (
             <div className="mb-4 p-3 rounded-xl bg-red-950/40 border border-red-500/40 flex items-center gap-2.5 text-xs text-red-300">
               <AlertCircle className="w-4 h-4 flex-shrink-0 text-red-400" />
               <span>{error}</span>
@@ -238,11 +285,16 @@ export const AuthModal: React.FC<AuthModalProps> = ({
 
               <button
                 type="submit"
-                disabled={loading}
+                disabled={loading || lockoutSec > 0}
                 className="w-full gold-button text-black font-bold text-xs py-3 rounded-xl shadow-lg mt-2 flex items-center justify-center gap-2 hover:scale-[1.01] active:scale-[0.99] transition-all disabled:opacity-50"
               >
                 {loading ? (
                   <span>Выполняется вход...</span>
+                ) : lockoutSec > 0 ? (
+                  <>
+                    <ShieldAlert className="w-4 h-4 text-red-700" />
+                    <span>Блокировка ({lockoutSec} с)</span>
+                  </>
                 ) : (
                   <>
                     <LogIn className="w-4 h-4" />

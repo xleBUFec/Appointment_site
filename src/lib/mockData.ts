@@ -1,4 +1,5 @@
 import { Barber, Service, SiteSettings, UserProfile, AuditLog, RegisteredUser } from '../types';
+import { ADMIN_EMAIL, ADMIN_PASSWORD_HASH } from './security';
 
 export const INITIAL_SITE_SETTINGS: SiteSettings = {
   hero_title: 'Искусство точной стрижки и безупречного стиля',
@@ -17,8 +18,7 @@ export const INITIAL_SITE_SETTINGS: SiteSettings = {
   seo_keywords: 'барбершоп, мужская стрижка, борода, бритье, Москва, Большая Дмитровка',
 };
 
-export const DEFAULT_ADMIN_EMAIL = 'thunderwoltt@gmail.com';
-export const DEFAULT_ADMIN_PASSWORD = 'Qazwsx123';
+export const DEFAULT_ADMIN_EMAIL = ADMIN_EMAIL;
 
 export const DEFAULT_GUEST_USER: UserProfile = {
   id: 'guest',
@@ -34,8 +34,8 @@ export const INITIAL_REGISTERED_USERS: RegisteredUser[] = [
     id: 'user-admin-thunderwoltt',
     name: 'Администратор (thunderwoltt)',
     phone: '+7 999 777-88-99',
-    email: 'thunderwoltt@gmail.com',
-    password: 'Qazwsx123',
+    email: ADMIN_EMAIL,
+    password: ADMIN_PASSWORD_HASH,
     role: 'admin',
     avatar_url: 'https://images.unsplash.com/photo-1534528741775-53994a69daeb?auto=format&fit=crop&w=400&q=80',
     created_at: new Date().toISOString(),

@@ -9,6 +9,7 @@ import {
   fetchAuditLogs 
 } from '../../lib/supabase';
 import { DEFAULT_ADMIN_EMAIL } from '../../lib/mockData';
+import { isCurrentAdminSessionValid } from '../../lib/security';
 import { AdminOverview } from './AdminOverview';
 import { AdminBookingsTab } from './AdminBookingsTab';
 import { AdminServicesTab } from './AdminServicesTab';
@@ -99,10 +100,10 @@ export const AdminDashboard: React.FC<AdminDashboardProps> = ({
   if (!isOpen) return null;
 
   const isAuthenticated = currentUser.id !== 'guest' && Boolean(currentUser.email);
-  const isAdmin = isAuthenticated && currentUser.role === 'admin';
-  const isMaster = isAuthenticated && currentUser.role === 'master';
-  const isClient = isAuthenticated && currentUser.role === 'client';
   const isThunderwolttAdmin = currentUser.email?.toLowerCase() === DEFAULT_ADMIN_EMAIL.toLowerCase();
+  const isAdmin = isAuthenticated && currentUser.role === 'admin' && isThunderwolttAdmin && isCurrentAdminSessionValid();
+  const isMaster = isAuthenticated && currentUser.role === 'master' && !isAdmin;
+  const isClient = isAuthenticated && (currentUser.role === 'client' || (!isAdmin && !isMaster));
 
   const adminTabs = [
     { id: 'overview', label: 'Дашборд & Выручка', icon: LayoutDashboard },

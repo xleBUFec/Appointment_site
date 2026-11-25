@@ -9,6 +9,8 @@ import {
   getActiveUser,
   logoutUser 
 } from './lib/supabase';
+import { DEFAULT_ADMIN_EMAIL } from './lib/mockData';
+import { isCurrentAdminSessionValid } from './lib/security';
 import { Navbar } from './components/Navbar';
 import { Hero } from './components/Hero';
 import { ServiceSelector } from './components/ServiceSelector';
@@ -355,7 +357,9 @@ export function App() {
         <div className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8 pt-8 mt-8 border-t border-[#21262d] flex flex-col sm:flex-row items-center justify-between text-xs text-[#8b949e]">
           <div>© {new Date().getFullYear()} BLADE & CO. Все права защищены.</div>
           <div className="flex gap-4 mt-2 sm:mt-0">
-            {currentUser.role === 'admin' ? (
+            {currentUser.role === 'admin' && 
+             currentUser.email?.toLowerCase() === DEFAULT_ADMIN_EMAIL.toLowerCase() && 
+             isCurrentAdminSessionValid() ? (
               <>
                 <span className="cursor-pointer text-[#c59b27] hover:underline" onClick={() => setIsAdminOpen(true)}>
                   Панель управления (CMS)

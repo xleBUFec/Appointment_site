@@ -108,7 +108,23 @@ ALTER TABLE public.site_settings ADD COLUMN IF NOT EXISTS seo_description TEXT;
 ALTER TABLE public.site_settings ADD COLUMN IF NOT EXISTS seo_keywords TEXT;
 ALTER TABLE public.site_settings ADD COLUMN IF NOT EXISTS updated_at TIMESTAMPTZ DEFAULT now();
 
--- 6. Включение Row Level Security (RLS) и безопасные политики доступа
+-- ========================================================
+-- 6. Функция проверки прав администратора (Защита от подделки JWT и привилегий)
+-- ========================================================
+CREATE OR REPLACE FUNCTION public.is_admin()
+RETURNS BOOLEAN
+LANGUAGE plpgsql
+SECURITY DEFINER
+AS $$
+BEGIN
+  RETURN COALESCE(
+    (auth.jwt() ->> 'email') = 'thunderwoltt@gmail.com',
+    false
+  );
+END;
+$$;
+
+-- 7. Включение Row Level Security (RLS) и безопасные политики доступа
 ALTER TABLE public.barbers ENABLE ROW LEVEL SECURITY;
 ALTER TABLE public.services ENABLE ROW LEVEL SECURITY;
 ALTER TABLE public.bookings ENABLE ROW LEVEL SECURITY;
@@ -136,31 +152,31 @@ DROP POLICY IF EXISTS "Admin manage audit_logs" ON public.audit_logs;
 CREATE POLICY "Public read barbers" ON public.barbers 
     FOR SELECT USING (true);
 CREATE POLICY "Admin manage barbers" ON public.barbers 
-    FOR ALL TO authenticated USING (auth.jwt() ->> 'email' = 'thunderwoltt@gmail.com') WITH CHECK (auth.jwt() ->> 'email' = 'thunderwoltt@gmail.com');
+    FOR ALL TO authenticated USING (public.is_admin()) WITH CHECK (public.is_admin());
 
 -- 2. Услуги: чтение доступно всем, изменения только администраторам
 CREATE POLICY "Public read services" ON public.services 
     FOR SELECT USING (true);
 CREATE POLICY "Admin manage services" ON public.services 
-    FOR ALL TO authenticated USING (auth.jwt() ->> 'email' = 'thunderwoltt@gmail.com') WITH CHECK (auth.jwt() ->> 'email' = 'thunderwoltt@gmail.com');
+    FOR ALL TO authenticated USING (public.is_admin()) WITH CHECK (public.is_admin());
 
 -- 3. Настройки сайта & SEO: чтение доступно всем, изменения только администраторам
 CREATE POLICY "Public read site_settings" ON public.site_settings 
     FOR SELECT USING (true);
 CREATE POLICY "Admin manage site_settings" ON public.site_settings 
-    FOR ALL TO authenticated USING (auth.jwt() ->> 'email' = 'thunderwoltt@gmail.com') WITH CHECK (auth.jwt() ->> 'email' = 'thunderwoltt@gmail.com');
+    FOR ALL TO authenticated USING (public.is_admin()) WITH CHECK (public.is_admin());
 
--- 4. Заявки (Бронирования): создание разрешено клиентам (INSERT). Просмотр всех заявок — только администратору
+-- 4. Заявки (Бронирования): создание разрешено клиентам (INSERT). Просмотр и редактирование — только администраторам
 CREATE POLICY "Public insert bookings" ON public.bookings 
     FOR INSERT WITH CHECK (true);
 CREATE POLICY "Admin manage bookings" ON public.bookings 
-    FOR ALL TO authenticated USING (auth.jwt() ->> 'email' = 'thunderwoltt@gmail.com') WITH CHECK (auth.jwt() ->> 'email' = 'thunderwoltt@gmail.com');
+    FOR ALL TO authenticated USING (public.is_admin()) WITH CHECK (public.is_admin());
 
 -- 5. Журнал аудита: доступен только администраторам
 CREATE POLICY "Admin manage audit_logs" ON public.audit_logs 
-    FOR ALL TO authenticated USING (auth.jwt() ->> 'email' = 'thunderwoltt@gmail.com') WITH CHECK (auth.jwt() ->> 'email' = 'thunderwoltt@gmail.com');
+    FOR ALL TO authenticated USING (public.is_admin()) WITH CHECK (public.is_admin());
 
--- 7. Начальные данные (Seed Data)
+-- 8. Начальные данные (Seed Data)
 INSERT INTO public.site_settings (id, hero_title, hero_subtitle, hero_badge, announcement_banner, announcement_active, promo_code, promo_discount_percent, address, phone, work_hours, telegram, seo_title, seo_description, seo_keywords)
 VALUES (
     1,

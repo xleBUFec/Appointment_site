@@ -1,6 +1,7 @@
 import React, { useState, useEffect } from 'react';
 import { Star, MessageSquare, CheckCircle2, User, Sparkles, Plus, ThumbsUp } from 'lucide-react';
 import { UserProfile } from '../types';
+import { sanitizeInput } from '../lib/security';
 
 interface Review {
   id: string;
@@ -85,16 +86,18 @@ export const ReviewsSection: React.FC<ReviewsSectionProps> = ({ currentUser, onO
 
   const handleAddReview = (e: React.FormEvent) => {
     e.preventDefault();
-    if (!comment.trim() || !authorName.trim()) return;
+    const cleanComment = sanitizeInput(comment);
+    const cleanAuthor = sanitizeInput(authorName);
+    if (!cleanComment || !cleanAuthor) return;
 
     const newRev: Review = {
       id: 'rev-' + Date.now(),
-      author: authorName.trim(),
+      author: cleanAuthor,
       rating,
       date: 'Только что',
-      service: serviceName,
-      barber: barberName,
-      comment: comment.trim(),
+      service: sanitizeInput(serviceName),
+      barber: sanitizeInput(barberName),
+      comment: cleanComment,
       verified: Boolean(currentUser && currentUser.id !== 'guest'),
       likes: 1,
     };

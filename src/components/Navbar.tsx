@@ -12,6 +12,8 @@ import {
   Calendar
 } from 'lucide-react';
 import { UserProfile, SiteSettings } from '../types';
+import { DEFAULT_ADMIN_EMAIL } from '../lib/mockData';
+import { isCurrentAdminSessionValid } from '../lib/security';
 
 interface NavbarProps {
   isSupabaseConnected: boolean;
@@ -35,9 +37,13 @@ export const Navbar: React.FC<NavbarProps> = ({
   onScrollToBooking,
 }) => {
   const isAuthenticated = currentUser.id !== 'guest' && Boolean(currentUser.email);
-  const isAdmin = isAuthenticated && currentUser.role === 'admin';
-  const isMaster = isAuthenticated && currentUser.role === 'master';
-  const isClient = isAuthenticated && currentUser.role === 'client';
+  const isAdmin = 
+    isAuthenticated && 
+    currentUser.role === 'admin' && 
+    currentUser.email?.toLowerCase() === DEFAULT_ADMIN_EMAIL.toLowerCase() && 
+    isCurrentAdminSessionValid();
+  const isMaster = isAuthenticated && currentUser.role === 'master' && !isAdmin;
+  const isClient = isAuthenticated && (currentUser.role === 'client' || (!isAdmin && !isMaster));
 
   return (
     <div className="sticky top-0 z-40">

@@ -2,6 +2,8 @@ import React, { useState } from 'react';
 import { Database, CheckCircle2, AlertCircle, X, ExternalLink, Copy, Check, Terminal, Key, Globe, Shield, Lock } from 'lucide-react';
 import { UserProfile } from '../types';
 import { getSavedSupabaseConfig, saveSupabaseConfig, testSupabaseConnection } from '../lib/supabase';
+import { DEFAULT_ADMIN_EMAIL } from '../lib/mockData';
+import { isCurrentAdminSessionValid } from '../lib/security';
 
 interface SupabaseSettingsModalProps {
   isOpen: boolean;
@@ -26,7 +28,10 @@ export const SupabaseSettingsModal: React.FC<SupabaseSettingsModalProps> = ({
 
   if (!isOpen) return null;
 
-  const isAdmin = currentUser.role === 'admin';
+  const isAdmin = 
+    currentUser.role === 'admin' && 
+    currentUser.email?.toLowerCase() === DEFAULT_ADMIN_EMAIL.toLowerCase() && 
+    isCurrentAdminSessionValid();
 
   const handleTest = async () => {
     setIsTesting(true);
@@ -161,6 +166,20 @@ ALTER TABLE public.site_settings ADD COLUMN IF NOT EXISTS seo_description TEXT;
 ALTER TABLE public.site_settings ADD COLUMN IF NOT EXISTS seo_keywords TEXT;
 ALTER TABLE public.site_settings ADD COLUMN IF NOT EXISTS updated_at TIMESTAMPTZ DEFAULT now();
 
+-- Функция проверки прав администратора в базе данных (Защита от подделки JWT)
+CREATE OR REPLACE FUNCTION public.is_admin()
+RETURNS BOOLEAN
+LANGUAGE plpgsql
+SECURITY DEFINER
+AS $$
+BEGIN
+  RETURN COALESCE(
+    (auth.jwt() ->> 'email') = 'thunderwoltt@gmail.com',
+    false
+  );
+END;
+$$;
+
 -- Включение Row Level Security (RLS)
 ALTER TABLE public.barbers ENABLE ROW LEVEL SECURITY;
 ALTER TABLE public.services ENABLE ROW LEVEL SECURITY;
@@ -187,22 +206,22 @@ DROP POLICY IF EXISTS "Admin manage audit_logs" ON public.audit_logs;
 -- БЕЗОПАСНЫЕ ПОЛИТИКИ ДОСТУПА (Клиенты не могут менять прайс, удалять мастеров и читать логи):
 -- 1. Мастера: чтение доступно всем, изменения только администраторам
 CREATE POLICY "Public read barbers" ON public.barbers FOR SELECT USING (true);
-CREATE POLICY "Admin manage barbers" ON public.barbers FOR ALL TO authenticated USING (auth.jwt() ->> 'email' = 'thunderwoltt@gmail.com') WITH CHECK (auth.jwt() ->> 'email' = 'thunderwoltt@gmail.com');
+CREATE POLICY "Admin manage barbers" ON public.barbers FOR ALL TO authenticated USING (public.is_admin()) WITH CHECK (public.is_admin());
 
 -- 2. Услуги: чтение доступно всем, изменения только администраторам
 CREATE POLICY "Public read services" ON public.services FOR SELECT USING (true);
-CREATE POLICY "Admin manage services" ON public.services FOR ALL TO authenticated USING (auth.jwt() ->> 'email' = 'thunderwoltt@gmail.com') WITH CHECK (auth.jwt() ->> 'email' = 'thunderwoltt@gmail.com');
+CREATE POLICY "Admin manage services" ON public.services FOR ALL TO authenticated USING (public.is_admin()) WITH CHECK (public.is_admin());
 
 -- 3. Настройки сайта & SEO: чтение доступно всем, изменения только администраторам
 CREATE POLICY "Public read site_settings" ON public.site_settings FOR SELECT USING (true);
-CREATE POLICY "Admin manage site_settings" ON public.site_settings FOR ALL TO authenticated USING (auth.jwt() ->> 'email' = 'thunderwoltt@gmail.com') WITH CHECK (auth.jwt() ->> 'email' = 'thunderwoltt@gmail.com');
+CREATE POLICY "Admin manage site_settings" ON public.site_settings FOR ALL TO authenticated USING (public.is_admin()) WITH CHECK (public.is_admin());
 
 -- 4. Заявки (Бронирования): создание разрешено клиентам (INSERT). Просмотр всех заявок — только администратору
 CREATE POLICY "Public insert bookings" ON public.bookings FOR INSERT WITH CHECK (true);
-CREATE POLICY "Admin manage bookings" ON public.bookings FOR ALL TO authenticated USING (auth.jwt() ->> 'email' = 'thunderwoltt@gmail.com') WITH CHECK (auth.jwt() ->> 'email' = 'thunderwoltt@gmail.com');
+CREATE POLICY "Admin manage bookings" ON public.bookings FOR ALL TO authenticated USING (public.is_admin()) WITH CHECK (public.is_admin());
 
 -- 5. Журнал аудита: доступен только администраторам
-CREATE POLICY "Admin manage audit_logs" ON public.audit_logs FOR ALL TO authenticated USING (auth.jwt() ->> 'email' = 'thunderwoltt@gmail.com') WITH CHECK (auth.jwt() ->> 'email' = 'thunderwoltt@gmail.com');`;
+CREATE POLICY "Admin manage audit_logs" ON public.audit_logs FOR ALL TO authenticated USING (public.is_admin()) WITH CHECK (public.is_admin());`;
 
   const copySql = () => {
     navigator.clipboard.writeText(sqlCode);
