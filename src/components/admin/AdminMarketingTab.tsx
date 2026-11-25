@@ -230,6 +230,27 @@ export const AdminMarketingTab: React.FC<AdminMarketingTabProps> = ({
             placeholder="барбершоп, стрижка, борода..."
           />
         </div>
+
+        {/* Live Search Engine Snippet Preview */}
+        <div className="p-4 rounded-xl bg-[#161b22] border border-[#21262d] space-y-1.5 mt-2">
+          <div className="flex items-center gap-1.5 text-[11px] font-semibold text-[#8b949e] uppercase tracking-wider mb-2">
+            <Globe className="w-3.5 h-3.5 text-[#c59b27]" />
+            <span>Интерактивный предпросмотр сниппета (Google / Яндекс)</span>
+          </div>
+
+          <div className="p-3.5 rounded-lg bg-[#0e1117] border border-[#21262d] space-y-1 font-sans">
+            <div className="flex items-center gap-1.5 text-xs text-[#8b949e]">
+              <span className="w-4 h-4 rounded-full bg-[#c59b27]/20 text-[#c59b27] flex items-center justify-center text-[10px] font-bold">B</span>
+              <span className="truncate">https://blade-co.ru</span>
+            </div>
+            <div className="text-sm font-medium text-[#8ab4f8] hover:underline cursor-pointer truncate">
+              {form.seo_title || 'BLADE & CO. | Премиум Барбершоп в центре Москвы'}
+            </div>
+            <div className="text-xs text-[#bdc1c6] line-clamp-2 leading-relaxed">
+              {form.seo_description || 'Классические мужские стрижки, бритье опасной бритвой, моделирование бороды и мужской уход. Онлайн-запись 24/7.'}
+            </div>
+          </div>
+        </div>
       </div>
 
     </form>

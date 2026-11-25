@@ -71,9 +71,27 @@ export function App() {
     setServices(servicesRes.data);
     setSettings(settingsRes);
     
-    // Apply dynamic SEO title
+    // Apply dynamic SEO meta tags
     if (settingsRes?.seo_title) {
       document.title = settingsRes.seo_title;
+    }
+    if (settingsRes?.seo_description) {
+      let metaDesc = document.querySelector('meta[name="description"]');
+      if (!metaDesc) {
+        metaDesc = document.createElement('meta');
+        metaDesc.setAttribute('name', 'description');
+        document.head.appendChild(metaDesc);
+      }
+      metaDesc.setAttribute('content', settingsRes.seo_description);
+    }
+    if (settingsRes?.seo_keywords) {
+      let metaKw = document.querySelector('meta[name="keywords"]');
+      if (!metaKw) {
+        metaKw = document.createElement('meta');
+        metaKw.setAttribute('name', 'keywords');
+        document.head.appendChild(metaKw);
+      }
+      metaKw.setAttribute('content', settingsRes.seo_keywords);
     }
 
     setLoadingInitial(false);
