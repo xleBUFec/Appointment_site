@@ -733,6 +733,51 @@ export async function fetchAllBookings(user?: UserProfile): Promise<{ data: Book
   return { data: [], isSupabase: false };
 }
 
+/**
+ * Получить занятые таймслоты на дату для мастера (защита от коллизий и овербукинга)
+ * Возвращает только список временных меток (напр. ['12:00', '14:30']), не раскрывая приватные данные
+ */
+export async function fetchOccupiedSlots(date: string, barberId?: string): Promise<string[]> {
+  const cleanDate = sanitizeInput(date);
+  const cleanBarberId = barberId ? sanitizeInput(barberId) : undefined;
+  if (!cleanDate) return [];
+
+  const client = getClient();
+  if (client) {
+    try {
+      const { data, error } = await client.rpc('get_occupied_slots', {
+        p_date: cleanDate,
+        p_barber_id: cleanBarberId || null,
+      });
+
+      if (!error && Array.isArray(data)) {
+        return data.map((item: any) => typeof item === 'string' ? item : item.slot_time).filter(Boolean);
+      }
+    } catch (e) {
+      // fallback
+    }
+  }
+
+  // Fallback к локальным записям
+  try {
+    const saved = localStorage.getItem(STORAGE_KEY_LOCAL_BOOKINGS);
+    if (saved) {
+      const bookings: Booking[] = JSON.parse(saved);
+      return bookings
+        .filter(b => 
+          b.booking_date === cleanDate && 
+          b.status === 'confirmed' && 
+          (!cleanBarberId || b.barber_id === cleanBarberId)
+        )
+        .map(b => b.booking_time);
+    }
+  } catch (e) {
+    // ignore
+  }
+
+  return [];
+}
+
 export async function updateBookingStatus(
   id: string,
   status: 'confirmed' | 'cancelled' | 'completed',

@@ -124,7 +124,31 @@ BEGIN
 END;
 $$;
 
--- 7. Включение Row Level Security (RLS) и безопасные политики доступа
+-- 7. Безопасная функция для проверки занятых слотов без раскрытия персональных данных
+CREATE OR REPLACE FUNCTION public.get_occupied_slots(p_date DATE, p_barber_id TEXT DEFAULT NULL)
+RETURNS TABLE (slot_time TEXT)
+LANGUAGE plpgsql
+SECURITY DEFINER
+AS $$
+BEGIN
+  IF p_barber_id IS NOT NULL AND p_barber_id != '' THEN
+    RETURN QUERY 
+      SELECT b.booking_time 
+      FROM public.bookings b 
+      WHERE b.booking_date = p_date 
+        AND b.barber_id = p_barber_id 
+        AND b.status = 'confirmed';
+  ELSE
+    RETURN QUERY 
+      SELECT b.booking_time 
+      FROM public.bookings b 
+      WHERE b.booking_date = p_date 
+        AND b.status = 'confirmed';
+  END IF;
+END;
+$$;
+
+-- 8. Включение Row Level Security (RLS) и безопасные политики доступа
 ALTER TABLE public.barbers ENABLE ROW LEVEL SECURITY;
 ALTER TABLE public.services ENABLE ROW LEVEL SECURITY;
 ALTER TABLE public.bookings ENABLE ROW LEVEL SECURITY;

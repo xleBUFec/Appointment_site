@@ -260,6 +260,7 @@ export function App() {
                 <DateTimeSelector
                   selectedDate={selectedDate}
                   selectedTime={selectedTime}
+                  selectedBarber={selectedBarber}
                   onSelectDate={(date) => setSelectedDate(date)}
                   onSelectTime={(time) => setSelectedTime(time)}
                   onNext={() => setStep(4)}

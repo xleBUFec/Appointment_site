@@ -180,6 +180,30 @@ BEGIN
 END;
 $$;
 
+-- Функция проверки занятых слотов без раскрытия персональных данных клиентов
+CREATE OR REPLACE FUNCTION public.get_occupied_slots(p_date DATE, p_barber_id TEXT DEFAULT NULL)
+RETURNS TABLE (slot_time TEXT)
+LANGUAGE plpgsql
+SECURITY DEFINER
+AS $$
+BEGIN
+  IF p_barber_id IS NOT NULL AND p_barber_id != '' THEN
+    RETURN QUERY 
+      SELECT b.booking_time 
+      FROM public.bookings b 
+      WHERE b.booking_date = p_date 
+        AND b.barber_id = p_barber_id 
+        AND b.status = 'confirmed';
+  ELSE
+    RETURN QUERY 
+      SELECT b.booking_time 
+      FROM public.bookings b 
+      WHERE b.booking_date = p_date 
+        AND b.status = 'confirmed';
+  END IF;
+END;
+$$;
+
 -- Включение Row Level Security (RLS)
 ALTER TABLE public.barbers ENABLE ROW LEVEL SECURITY;
 ALTER TABLE public.services ENABLE ROW LEVEL SECURITY;

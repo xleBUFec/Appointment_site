@@ -1,9 +1,12 @@
-import React from 'react';
-import { Calendar, Clock, Sun, Sunset, Moon } from 'lucide-react';
+import React, { useState, useEffect } from 'react';
+import { Calendar, Clock, Sun, Sunset, Moon, AlertCircle, RefreshCw, CheckCircle2 } from 'lucide-react';
+import { Barber } from '../types';
+import { fetchOccupiedSlots } from '../lib/supabase';
 
 interface DateTimeSelectorProps {
   selectedDate: string;
   selectedTime: string;
+  selectedBarber?: Barber | null;
   onSelectDate: (date: string) => void;
   onSelectTime: (time: string) => void;
   onNext: () => void;
@@ -13,11 +16,15 @@ interface DateTimeSelectorProps {
 export const DateTimeSelector: React.FC<DateTimeSelectorProps> = ({
   selectedDate,
   selectedTime,
+  selectedBarber,
   onSelectDate,
   onSelectTime,
   onNext,
   onBack,
 }) => {
+  const [occupiedSlots, setOccupiedSlots] = useState<string[]>([]);
+  const [loadingSlots, setLoadingSlots] = useState(false);
+
   // Generate next 14 days
   const dates = Array.from({ length: 14 }).map((_, i) => {
     const d = new Date();
@@ -42,6 +49,28 @@ export const DateTimeSelector: React.FC<DateTimeSelectorProps> = ({
     };
   });
 
+  // Загрузка занятых слотов при изменении даты или мастера
+  useEffect(() => {
+    let isMounted = true;
+    async function loadSlots() {
+      setLoadingSlots(true);
+      try {
+        const slots = await fetchOccupiedSlots(selectedDate, selectedBarber?.id);
+        if (isMounted) {
+          setOccupiedSlots(slots);
+        }
+      } catch (e) {
+        if (isMounted) setOccupiedSlots([]);
+      } finally {
+        if (isMounted) setLoadingSlots(false);
+      }
+    }
+    loadSlots();
+    return () => {
+      isMounted = false;
+    };
+  }, [selectedDate, selectedBarber?.id]);
+
   const timeSlots = {
     morning: {
       title: 'Утро',
@@ -60,14 +89,47 @@ export const DateTimeSelector: React.FC<DateTimeSelectorProps> = ({
     },
   };
 
+  const getSlotStatus = (slot: string): { disabled: boolean; reason?: string } => {
+    // 1. Проверка занятости слота в базе данных
+    if (occupiedSlots.includes(slot)) {
+      return { disabled: true, reason: 'Занято' };
+    }
+
+    // 2. Проверка прошедшего времени, если выбрана сегодняшняя дата
+    const todayIso = new Date().toISOString().split('T')[0];
+    if (selectedDate === todayIso) {
+      const [hours, mins] = slot.split(':').map(Number);
+      const now = new Date();
+      const slotTime = new Date();
+      slotTime.setHours(hours, mins, 0, 0);
+
+      // Блокируем время, если до него осталось меньше 15 минут
+      if (slotTime.getTime() <= now.getTime() + 15 * 60 * 1000) {
+        return { disabled: true, reason: 'Прошло' };
+      }
+    }
+
+    return { disabled: false };
+  };
+
+  const selectedSlotStatus = selectedTime ? getSlotStatus(selectedTime) : { disabled: true };
+  const canProceed = Boolean(selectedDate && selectedTime && !selectedSlotStatus.disabled);
+
   return (
     <div className="space-y-8">
       
       {/* 1. Date Picker Horizontal Strip */}
       <div>
-        <div className="flex items-center gap-2 mb-3 text-sm font-semibold text-[#f8f5ee]">
-          <Calendar className="w-4 h-4 text-[#c59b27]" />
-          <span>Выберите день визита</span>
+        <div className="flex items-center justify-between mb-3 text-sm font-semibold text-[#f8f5ee]">
+          <div className="flex items-center gap-2">
+            <Calendar className="w-4 h-4 text-[#c59b27]" />
+            <span>Выберите день визита</span>
+          </div>
+          {selectedBarber && (
+            <span className="text-xs text-[#8b949e]">
+              Мастер: <strong className="text-[#f8f5ee]">{selectedBarber.name}</strong>
+            </span>
+          )}
         </div>
 
         <div className="flex gap-2.5 overflow-x-auto pb-3 pt-1 scrollbar-none">
@@ -100,43 +162,77 @@ export const DateTimeSelector: React.FC<DateTimeSelectorProps> = ({
 
       {/* 2. Time Slots Picker */}
       <div>
-        <div className="flex items-center gap-2 mb-4 text-sm font-semibold text-[#f8f5ee]">
-          <Clock className="w-4 h-4 text-[#c59b27]" />
-          <span>Выберите время записи</span>
+        <div className="flex items-center justify-between mb-4 text-sm font-semibold text-[#f8f5ee]">
+          <div className="flex items-center gap-2">
+            <Clock className="w-4 h-4 text-[#c59b27]" />
+            <span>Выберите свободное время</span>
+          </div>
+
+          <div className="flex items-center gap-4 text-[11px] text-[#8b949e]">
+            <div className="flex items-center gap-1.5">
+              <span className="w-2.5 h-2.5 rounded-full bg-[#c59b27]" />
+              <span>Выбрано</span>
+            </div>
+            <div className="flex items-center gap-1.5">
+              <span className="w-2.5 h-2.5 rounded-full bg-[#21262d]" />
+              <span>Свободно</span>
+            </div>
+            <div className="flex items-center gap-1.5">
+              <span className="w-2.5 h-2.5 rounded-full bg-red-950/60 border border-red-500/30" />
+              <span>Занято</span>
+            </div>
+          </div>
         </div>
 
-        <div className="space-y-4">
-          {Object.entries(timeSlots).map(([key, group]) => {
-            const Icon = group.icon;
-            return (
-              <div key={key} className="p-4 rounded-2xl bg-[#161b22]/50 border border-[#21262d]">
-                <div className="flex items-center gap-2 text-xs font-semibold text-[#8b949e] uppercase tracking-wider mb-3">
-                  <Icon className="w-3.5 h-3.5 text-[#c59b27]" />
-                  <span>{group.title}</span>
+        {loadingSlots ? (
+          <div className="py-12 text-center text-xs text-[#8b949e] flex flex-col items-center justify-center gap-2">
+            <RefreshCw className="w-5 h-5 animate-spin text-[#c59b27]" />
+            <span>Проверка занятости расписания...</span>
+          </div>
+        ) : (
+          <div className="space-y-4">
+            {Object.entries(timeSlots).map(([key, group]) => {
+              const Icon = group.icon;
+              return (
+                <div key={key} className="p-4 rounded-2xl bg-[#161b22]/50 border border-[#21262d]">
+                  <div className="flex items-center gap-2 text-xs font-semibold text-[#8b949e] uppercase tracking-wider mb-3">
+                    <Icon className="w-3.5 h-3.5 text-[#c59b27]" />
+                    <span>{group.title}</span>
+                  </div>
+                  
+                  <div className="grid grid-cols-3 sm:grid-cols-4 md:grid-cols-6 lg:grid-cols-8 gap-2">
+                    {group.slots.map((slot) => {
+                      const isSelected = selectedTime === slot;
+                      const status = getSlotStatus(slot);
+
+                      return (
+                        <button
+                          key={slot}
+                          disabled={status.disabled}
+                          onClick={() => onSelectTime(slot)}
+                          className={`py-2 px-3 rounded-xl text-xs sm:text-sm font-semibold transition-all relative ${
+                            status.disabled
+                              ? 'bg-[#12161f]/30 text-[#484f58] border border-[#21262d]/40 cursor-not-allowed line-through'
+                              : isSelected
+                              ? 'bg-[#c59b27] text-black shadow-md shadow-[#c59b27]/30 scale-[1.03]'
+                              : 'bg-[#0e1117] text-[#c0c7d0] hover:text-[#f8f5ee] hover:bg-[#21262d] border border-[#21262d]'
+                          }`}
+                          title={
+                            status.disabled
+                              ? `Время недоступно (${status.reason})`
+                              : `Выбрать время: ${slot}`
+                          }
+                        >
+                          {slot}
+                        </button>
+                      );
+                    })}
+                  </div>
                 </div>
-                
-                <div className="grid grid-cols-3 sm:grid-cols-4 md:grid-cols-6 lg:grid-cols-8 gap-2">
-                  {group.slots.map((slot) => {
-                    const isSelected = selectedTime === slot;
-                    return (
-                      <button
-                        key={slot}
-                        onClick={() => onSelectTime(slot)}
-                        className={`py-2 px-3 rounded-xl text-sm font-semibold transition-all ${
-                          isSelected
-                            ? 'bg-[#c59b27] text-black shadow-md shadow-[#c59b27]/30 scale-[1.03]'
-                            : 'bg-[#0e1117] text-[#c0c7d0] hover:text-[#f8f5ee] hover:bg-[#21262d] border border-[#21262d]'
-                        }`}
-                      >
-                        {slot}
-                      </button>
-                    );
-                  })}
-                </div>
-              </div>
-            );
-          })}
-        </div>
+              );
+            })}
+          </div>
+        )}
       </div>
 
       {/* Nav Actions */}
@@ -149,10 +245,10 @@ export const DateTimeSelector: React.FC<DateTimeSelectorProps> = ({
         </button>
 
         <button
-          disabled={!selectedDate || !selectedTime}
+          disabled={!canProceed}
           onClick={onNext}
           className={`gold-button text-black font-bold text-sm px-7 py-3 rounded-xl transition-all flex items-center gap-2 ${
-            !selectedDate || !selectedTime ? 'opacity-40 cursor-not-allowed filter grayscale' : 'hover:scale-[1.02]'
+            !canProceed ? 'opacity-40 cursor-not-allowed filter grayscale' : 'hover:scale-[1.02]'
           }`}
         >
           <span>Далее: Контакты и подтверждение</span>
