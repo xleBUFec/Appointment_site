@@ -118,7 +118,7 @@ export const AdminServicesTab: React.FC<AdminServicesTabProps> = ({
             <div className="pt-3 border-t border-[#21262d] flex items-center justify-between">
               <div className="flex items-center gap-3">
                 <span className="text-base font-bold text-[#f8f5ee]">
-                  {service.price.toLocaleString('ru-RU')} ₽
+                  {service.price.toLocaleString('ru-RU')} ₸
                 </span>
                 <span className="flex items-center gap-1 text-xs text-[#8b949e]">
                   <Clock className="w-3.5 h-3.5 text-[#c59b27]" />
@@ -175,7 +175,7 @@ export const AdminServicesTab: React.FC<AdminServicesTabProps> = ({
 
               <div className="grid grid-cols-2 gap-3">
                 <div>
-                  <label className="block text-xs font-semibold text-[#8b949e] uppercase mb-1">Цена (₽) *</label>
+                  <label className="block text-xs font-semibold text-[#8b949e] uppercase mb-1">Цена (₸) *</label>
                   <input
                     type="number"
                     required

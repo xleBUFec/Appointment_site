@@ -44,6 +44,8 @@ CREATE TABLE IF NOT EXISTS public.bookings (
     booking_time TEXT NOT NULL,
     comment TEXT,
     status TEXT DEFAULT 'confirmed' CHECK (status IN ('confirmed', 'cancelled', 'completed')),
+    payment_method TEXT DEFAULT 'kaspi',
+    tips INTEGER DEFAULT 0,
     created_at TIMESTAMPTZ DEFAULT now()
 );
 
@@ -96,6 +98,8 @@ ALTER TABLE public.bookings ADD COLUMN IF NOT EXISTS service_id TEXT;
 ALTER TABLE public.bookings ADD COLUMN IF NOT EXISTS barber_id TEXT;
 ALTER TABLE public.bookings ADD COLUMN IF NOT EXISTS comment TEXT;
 ALTER TABLE public.bookings ADD COLUMN IF NOT EXISTS status TEXT DEFAULT 'confirmed';
+ALTER TABLE public.bookings ADD COLUMN IF NOT EXISTS payment_method TEXT DEFAULT 'kaspi';
+ALTER TABLE public.bookings ADD COLUMN IF NOT EXISTS tips INTEGER DEFAULT 0;
 ALTER TABLE public.bookings ADD COLUMN IF NOT EXISTS created_at TIMESTAMPTZ DEFAULT now();
 
 ALTER TABLE public.site_settings ADD COLUMN IF NOT EXISTS announcement_banner TEXT;
@@ -211,13 +215,13 @@ VALUES (
     true,
     'FIRST20',
     20,
-    'г. Москва, ул. Большая Дмитровка, д. 12',
-    '+7 (495) 123-45-67',
+    'г. Алматы, пр. Достык, д. 42',
+    '+7 (777) 123-45-67',
     '10:00 — 22:00 ежедневно',
-    '@blade_barbershop',
-    'BLADE & CO. | Премиум Барбершоп в центре Москвы',
-    'Классические мужские стрижки, моделирование бороды и бритье опасной бритвой. Онлайн-запись 24/7.',
-    'барбершоп, мужская стрижка, борода, бритье, Москва, Большая Дмитровка'
+    '@blade_almaty',
+    'BLADE & CO. | Премиум Барбершоп в Алматы (Достык)',
+    'Классические мужские стрижки, моделирование бороды и бритье опасной бритвой. Онлайн-запись 24/7 и оплата Kaspi QR.',
+    'барбершоп алматы, мужская стрижка алматы, борода достык, бритье алматы, kaspi qr'
 ) ON CONFLICT (id) DO NOTHING;
 
 INSERT INTO public.barbers (id, name, role, avatar_url, experience, rating, bio, active)
@@ -229,10 +233,10 @@ ON CONFLICT (id) DO NOTHING;
 
 INSERT INTO public.services (id, title, description, price, duration_min, category, popular, active)
 VALUES 
-    ('service-1', 'Классическая мужская стрижка', 'Мытье головы, индивидуальная стрижка ножницами и машинкой, укладка премиум стайлингом.', 2500, 50, 'hair', true, true),
-    ('service-2', 'Моделирование бороды и усов', 'Четкие контуры, распаривание горячим полотенцем, уход специальными маслами.', 1800, 40, 'beard', true, true),
-    ('service-3', 'Комплекс "Шеф": Стрижка + Борода', 'Полное преображение: стрижка волос, моделирование бороды и бритье шейной зоны.', 3800, 75, 'combo', true, true),
-    ('service-4', 'Королевское бритье опасной бритвой', 'Традиционный ритуал с распаривающими полотенцами, пеной из барсучьего помазка и холодным компрессом.', 2200, 45, 'beard', false, true),
-    ('service-5', 'Премиум СПА-уход для лица и кожи', 'Очищающая маска с черным углем, массаж лица и увлажняющая сыворотка.', 1600, 30, 'spa', false, true),
-    ('service-6', 'Камуфляж седины волос и бороды', 'Естественное тонирование седых волос без эффекта окрашенности за 15 минут.', 1500, 30, 'hair', false, true)
+    ('service-1', 'Классическая мужская стрижка', 'Мытье головы, индивидуальная стрижка ножницами и машинкой, укладка премиум стайлингом.', 8000, 50, 'hair', true, true),
+    ('service-2', 'Моделирование бороды и усов', 'Четкие контуры, распаривание горячим полотенцем, уход специальными маслами.', 6000, 40, 'beard', true, true),
+    ('service-3', 'Комплекс "Шеф": Стрижка + Борода', 'Полное преображение: стрижка волос, моделирование бороды и бритье шейной зоны.', 12000, 75, 'combo', true, true),
+    ('service-4', 'Королевское бритье опасной бритвой', 'Традиционный ритуал с распаривающими полотенцами, пеной из барсучьего помазка и холодным компрессом.', 7000, 45, 'beard', false, true),
+    ('service-5', 'Премиум СПА-уход для лица и кожи', 'Очищающая маска с черным углем, массаж лица и увлажняющая сыворотка.', 6000, 30, 'spa', false, true),
+    ('service-6', 'Камуфляж седины волос и бороды', 'Естественное тонирование седых волос без эффекта окрашенности за 15 минут.', 5000, 30, 'hair', false, true)
 ON CONFLICT (id) DO NOTHING;

@@ -1,4 +1,5 @@
 export type UserRole = 'admin' | 'master' | 'client';
+export type PaymentMethod = 'kaspi' | 'card' | 'cash';
 
 export interface UserProfile {
   id: string;
@@ -48,6 +49,8 @@ export interface Booking {
   service_name: string;
   barber_name: string;
   price: number;
+  tips?: number;
+  payment_method?: PaymentMethod;
   booking_date: string;
   booking_time: string;
   comment?: string;

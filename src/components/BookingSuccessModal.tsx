@@ -12,7 +12,10 @@ import {
   Check, 
   Download, 
   Send, 
-  ExternalLink 
+  ExternalLink,
+  QrCode,
+  Sparkles,
+  Heart
 } from 'lucide-react';
 import confetti from 'canvas-confetti';
 
@@ -28,6 +31,7 @@ export const BookingSuccessModal: React.FC<BookingSuccessModalProps> = ({
   onViewBookings,
 }) => {
   const [copied, setCopied] = useState(false);
+  const [showKaspiModal, setShowKaspiModal] = useState(booking.payment_method === 'kaspi');
 
   useEffect(() => {
     // Конфетти салют при подтверждении записи
@@ -63,9 +67,9 @@ export const BookingSuccessModal: React.FC<BookingSuccessModalProps> = ({
 
     const title = encodeURIComponent(`Стрижка в BLADE & CO.: ${booking.service_name}`);
     const details = encodeURIComponent(
-      `Мастер: ${booking.barber_name}\nУслуга: ${booking.service_name}\nСтоимость: ${booking.price} ₽\nНомер брони: #${booking.id}\nАдрес: г. Москва, ул. Большая Дмитровка, д. 12`
+      `Мастер: ${booking.barber_name}\nУслуга: ${booking.service_name}\nСтоимость: ${booking.price.toLocaleString('ru-RU')} ₸\nНомер брони: #${booking.id}\nАдрес: г. Алматы, пр. Достык, д. 42`
     );
-    const location = encodeURIComponent('г. Москва, ул. Большая Дмитровка, д. 12');
+    const location = encodeURIComponent('г. Алматы, пр. Достык, д. 42');
 
     return `https://calendar.google.com/calendar/render?action=TEMPLATE&text=${title}&dates=${startStr}/${endStr}&details=${details}&location=${location}`;
   };
@@ -81,16 +85,16 @@ export const BookingSuccessModal: React.FC<BookingSuccessModalProps> = ({
     const icsContent = [
       'BEGIN:VCALENDAR',
       'VERSION:2.0',
-      'PRODID:-//BLADE & CO.//Barbershop Booking//RU',
+      'PRODID:-//BLADE & CO.//Barbershop Booking//KZ',
       'CALSCALE:GREGORIAN',
       'BEGIN:VEVENT',
-      `UID:${booking.id}@blade-co.ru`,
+      `UID:${booking.id}@blade-co.kz`,
       `DTSTAMP:${formatIsoUtc(new Date())}`,
       `DTSTART:${formatIsoUtc(startDate)}`,
       `DTEND:${formatIsoUtc(endDate)}`,
       `SUMMARY:BLADE & CO.: ${booking.service_name}`,
-      `DESCRIPTION:Мастер: ${booking.barber_name}\\nУслуга: ${booking.service_name}\\nСтоимость: ${booking.price} ₽\\nНомер записи: #${booking.id}`,
-      'LOCATION:г. Москва, ул. Большая Дмитровка, д. 12',
+      `DESCRIPTION:Мастер: ${booking.barber_name}\\nУслуга: ${booking.service_name}\\nСтоимость: ${booking.price} ₸\\nНомер записи: #${booking.id}`,
+      'LOCATION:г. Алматы, пр. Достык, д. 42',
       'STATUS:CONFIRMED',
       'END:VEVENT',
       'END:VCALENDAR',
@@ -107,13 +111,13 @@ export const BookingSuccessModal: React.FC<BookingSuccessModalProps> = ({
 
   // Копирование информации о визите
   const copySummary = () => {
-    const text = `Запись в барбершоп BLADE & CO.:\nДата: ${formattedDate} в ${booking.booking_time}\nМастер: ${booking.barber_name}\nУслуга: ${booking.service_name} (${booking.price.toLocaleString('ru-RU')} ₽)\nАдрес: г. Москва, ул. Большая Дмитровка, д. 12\nНомер брони: #${booking.id}`;
+    const text = `Запись в барбершоп BLADE & CO.:\nДата: ${formattedDate} в ${booking.booking_time}\nМастер: ${booking.barber_name}\nУслуга: ${booking.service_name} (${booking.price.toLocaleString('ru-RU')} ₸)\nАдрес: г. Алматы, пр. Достык, д. 42\nНомер брони: #${booking.id}`;
     navigator.clipboard.writeText(text);
     setCopied(true);
     setTimeout(() => setCopied(false), 2000);
   };
 
-  const shareTelegramUrl = `https://t.me/share/url?url=${encodeURIComponent(typeof window !== 'undefined' ? window.location.origin : '')}&text=${encodeURIComponent(`Записался в барбершоп BLADE & CO. на ${booking.booking_date} в ${booking.booking_time} к мастеру ${booking.barber_name}!`)}`;
+  const shareTelegramUrl = `https://t.me/share/url?url=${encodeURIComponent(typeof window !== 'undefined' ? window.location.origin : '')}&text=${encodeURIComponent(`Записался в барбершоп BLADE & CO. в Алматы на ${booking.booking_date} в ${booking.booking_time} к мастеру ${booking.barber_name}!`)}`;
 
   return (
     <div className="fixed inset-0 z-50 flex items-center justify-center p-3 sm:p-4 bg-black/85 backdrop-blur-md animate-in fade-in duration-200">
@@ -143,6 +147,61 @@ export const BookingSuccessModal: React.FC<BookingSuccessModalProps> = ({
           </p>
         </div>
 
+        {/* Kaspi QR Quick Pay Banner */}
+        {booking.payment_method === 'kaspi' && (
+          <div className="mb-5 p-4 rounded-2xl bg-gradient-to-r from-[#e11c38]/15 via-[#e11c38]/10 to-[#161b22] border border-[#e11c38]/40 flex items-center justify-between gap-3">
+            <div className="flex items-center gap-3">
+              <div className="w-11 h-11 rounded-xl bg-[#e11c38] text-white flex items-center justify-center shadow-md shadow-[#e11c38]/30 flex-shrink-0 font-bold">
+                <QrCode className="w-6 h-6" />
+              </div>
+              <div>
+                <div className="flex items-center gap-1.5">
+                  <span className="font-bold text-xs text-[#f8f5ee]">Kaspi QR активен</span>
+                  <span className="text-[9px] px-1.5 py-0.2 rounded bg-[#e11c38] text-white font-bold">Kaspi Pay</span>
+                </div>
+                <p className="text-[11px] text-[#8b949e]">
+                  Сумма к оплате: <strong className="text-[#f8f5ee]">{booking.price.toLocaleString('ru-RU')} ₸</strong>
+                </p>
+              </div>
+            </div>
+            <button
+              type="button"
+              onClick={() => setShowKaspiModal(!showKaspiModal)}
+              className="px-3 py-1.5 rounded-lg bg-[#e11c38] hover:bg-[#c7152e] text-white text-xs font-bold transition-all shadow-md flex-shrink-0"
+            >
+              {showKaspiModal ? 'Скрыть QR' : 'Показать QR'}
+            </button>
+          </div>
+        )}
+
+        {/* Expanded Simulated Kaspi QR Card */}
+        {showKaspiModal && (
+          <div className="mb-5 p-5 rounded-2xl bg-[#0e1117] border border-[#e11c38]/30 text-center animate-in zoom-in-95 duration-200">
+            <div className="inline-block p-4 bg-white rounded-2xl shadow-xl mb-3">
+              {/* Stylized QR representation */}
+              <div className="w-36 h-36 border-4 border-black p-2 flex flex-col justify-between">
+                <div className="flex justify-between">
+                  <div className="w-8 h-8 bg-black rounded-sm" />
+                  <div className="w-8 h-8 bg-[#e11c38] rounded-sm" />
+                </div>
+                <div className="text-center font-bold text-[10px] text-black">
+                  KASPI QR
+                </div>
+                <div className="flex justify-between">
+                  <div className="w-8 h-8 bg-black rounded-sm" />
+                  <div className="w-8 h-8 bg-black rounded-sm" />
+                </div>
+              </div>
+            </div>
+            <div className="text-sm font-bold text-[#f8f5ee]">
+              {booking.price.toLocaleString('ru-RU')} ₸
+            </div>
+            <p className="text-xs text-[#8b949e] mt-1">
+              Отсканируйте камерой Kaspi в приложении или оплатите при посещении
+            </p>
+          </div>
+        )}
+
         {/* Ticket receipt card */}
         <div className="bg-[#0e1117] border border-[#21262d] rounded-2xl p-5 mb-5 space-y-3.5 shadow-inner">
           <div className="flex items-center justify-between pb-3 border-b border-[#21262d]">
@@ -150,12 +209,12 @@ export const BookingSuccessModal: React.FC<BookingSuccessModalProps> = ({
               <Scissors className="w-4 h-4 text-[#c59b27]" />
               <span className="font-semibold text-sm text-[#f8f5ee]">{booking.service_name}</span>
             </div>
-            <span className="font-bold text-sm text-[#c59b27]">{booking.price.toLocaleString('ru-RU')} ₽</span>
+            <span className="font-bold text-sm text-[#c59b27]">{booking.price.toLocaleString('ru-RU')} ₸</span>
           </div>
 
           <div className="grid grid-cols-2 gap-3 text-xs">
             <div>
-              <span className="text-[#8b949e] block mb-0.5">Мастер</span>
+              <span className="text-[#8b949e] block mb-0.5">Барбер</span>
               <span className="font-medium text-[#f8f5ee]">{booking.barber_name}</span>
             </div>
             <div>
@@ -178,17 +237,29 @@ export const BookingSuccessModal: React.FC<BookingSuccessModalProps> = ({
           <div className="pt-2 border-t border-[#21262d] flex items-center justify-between text-xs text-[#8b949e]">
             <div className="flex items-center gap-1.5">
               <MapPin className="w-3.5 h-3.5 text-[#c59b27] flex-shrink-0" />
-              <span>Большая Дмитровка, 12</span>
+              <span>Алматы, пр. Достык, 42</span>
             </div>
-            <a
-              href="https://yandex.ru/maps/?text=Москва+Большая+Дмитровка+12"
-              target="_blank"
-              rel="noreferrer"
-              className="text-[#c59b27] hover:underline flex items-center gap-1 text-[11px]"
-            >
-              <span>Карта</span>
-              <ExternalLink className="w-3 h-3" />
-            </a>
+            <div className="flex items-center gap-2">
+              <a
+                href="https://2gis.kz/almaty"
+                target="_blank"
+                rel="noreferrer"
+                className="text-[#29b6f6] hover:underline flex items-center gap-1 text-[11px]"
+              >
+                <span>2GIS</span>
+                <ExternalLink className="w-3 h-3" />
+              </a>
+              <span>•</span>
+              <a
+                href="https://yandex.kz/maps/?text=Алматы+Достык+42"
+                target="_blank"
+                rel="noreferrer"
+                className="text-[#c59b27] hover:underline flex items-center gap-1 text-[11px]"
+              >
+                <span>Яндекс</span>
+                <ExternalLink className="w-3 h-3" />
+              </a>
+            </div>
           </div>
         </div>
 
@@ -206,7 +277,7 @@ export const BookingSuccessModal: React.FC<BookingSuccessModalProps> = ({
 
           <button
             onClick={downloadIcsFile}
-            className="flex flex-col items-center justify-center p-2.5 rounded-xl bg-[#0e1117] border border-[#21262d] hover:border-[#c59b27]/60 hover:bg-[#1a202c] transition-all text-center group"
+            className="flex flex-col items-center justify-center p-2.5 rounded-xl bg-[#0e1117] border border-[#21262d] hover:border-[#c59b27]/60 hover:bg-[#1a202c] transition-all text-center group cursor-pointer"
           >
             <Download className="w-4 h-4 text-[#c59b27] mb-1 group-hover:scale-110 transition-transform" />
             <span className="text-[10px] font-semibold text-[#f8f5ee]">Скачать .ICS</span>
@@ -224,7 +295,7 @@ export const BookingSuccessModal: React.FC<BookingSuccessModalProps> = ({
 
           <button
             onClick={copySummary}
-            className="flex flex-col items-center justify-center p-2.5 rounded-xl bg-[#0e1117] border border-[#21262d] hover:border-[#c59b27]/60 hover:bg-[#1a202c] transition-all text-center group"
+            className="flex flex-col items-center justify-center p-2.5 rounded-xl bg-[#0e1117] border border-[#21262d] hover:border-[#c59b27]/60 hover:bg-[#1a202c] transition-all text-center group cursor-pointer"
           >
             {copied ? (
               <Check className="w-4 h-4 text-emerald-400 mb-1" />

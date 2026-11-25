@@ -341,9 +341,9 @@ export function App() {
             <div className="text-xs text-[#8b949e] space-y-1.5">
               <p className="flex items-center gap-2">
                 <MapPin className="w-3.5 h-3.5 text-[#c59b27]" />
-                <span>{settings?.address || 'г. Москва, ул. Большая Дмитровка, 12'}</span>
+                <span>{settings?.address || 'г. Алматы, пр. Достык, д. 42'}</span>
               </p>
-              <p>Метро: Театральная / Охотный ряд</p>
+              <p>Метро: Абай / ориентир: гостиница Казахстан</p>
             </div>
           </div>
 
@@ -363,11 +363,11 @@ export function App() {
             <div className="text-xs text-[#8b949e] space-y-1.5">
               <p className="flex items-center gap-2">
                 <Phone className="w-3.5 h-3.5 text-[#c59b27]" />
-                <a href={`tel:${settings?.phone}`} className="hover:underline">{settings?.phone || '+7 (495) 123-45-67'}</a>
+                <a href={`tel:${settings?.phone}`} className="hover:underline">{settings?.phone || '+7 (777) 123-45-67'}</a>
               </p>
               <p className="flex items-center gap-2 text-[#c59b27]">
                 <Send className="w-3.5 h-3.5" />
-                <span>Telegram: {settings?.telegram || '@blade_barbershop'}</span>
+                <span>Telegram: {settings?.telegram || '@blade_almaty'}</span>
               </p>
             </div>
           </div>

@@ -11,7 +11,7 @@ export const MobileQuickBar: React.FC<MobileQuickBarProps> = ({
   settings,
   onScrollToBooking,
 }) => {
-  const phone = settings?.phone || '+7 (495) 123-45-67';
+  const phone = settings?.phone || '+7 (777) 123-45-67';
 
   return (
     <div className="md:hidden fixed bottom-0 inset-x-0 z-30 bg-[#0e1117]/95 backdrop-blur-md border-t border-[#21262d] px-4 py-2.5 flex items-center gap-3 shadow-2xl">

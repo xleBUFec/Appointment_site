@@ -80,7 +80,7 @@ export const ClientCabinet: React.FC<ClientCabinetProps> = ({
             <div className="text-lg font-bold text-[#f8f5ee]">
               {currentUser.bonus_points || 650} <span className="text-xs text-[#c59b27]">баллов</span>
             </div>
-            <span className="text-[10px] text-emerald-400">1 балл = 1 рубль скидки</span>
+            <span className="text-[10px] text-emerald-400">1 балл = 1 тенге скидки</span>
           </div>
         </div>
       </div>
@@ -110,7 +110,7 @@ export const ClientCabinet: React.FC<ClientCabinetProps> = ({
                   </span>
                 </div>
                 <div className="text-xs text-[#8b949e] mt-1">
-                  Мастер: <strong className="text-[#f8f5ee]">{b.barber_name}</strong> • Сумма: <strong className="text-[#c59b27]">{b.price} ₽</strong>
+                  Мастер: <strong className="text-[#f8f5ee]">{b.barber_name}</strong> • Сумма: <strong className="text-[#c59b27]">{b.price.toLocaleString('ru-RU')} ₸</strong>
                 </div>
               </div>
 
@@ -156,7 +156,7 @@ export const ClientCabinet: React.FC<ClientCabinetProps> = ({
               </div>
 
               <div className="flex items-center gap-2">
-                <span className="font-bold text-[#c59b27]">{b.price} ₽</span>
+                <span className="font-bold text-[#c59b27]">{b.price.toLocaleString('ru-RU')} ₸</span>
                 <button
                   onClick={() => onBookAgain(b.service_name, b.barber_name)}
                   className="px-3 py-1.5 rounded-xl bg-[#21262d] hover:bg-[#30363d] text-[#f8f5ee] font-semibold flex items-center gap-1.5 transition-colors"

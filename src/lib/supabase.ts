@@ -592,7 +592,7 @@ export async function saveService(service: Service, user: UserProfile): Promise<
     updated = [...current, cleanService];
   }
   localStorage.setItem(STORAGE_KEY_SERVICES, JSON.stringify(updated));
-  await addAuditLog(index >= 0 ? 'Редактирование услуги' : 'Создание услуги', `Услуга: ${cleanService.title} (${cleanService.price} ₽)`, user);
+  await addAuditLog(index >= 0 ? 'Редактирование услуги' : 'Создание услуги', `Услуга: ${cleanService.title} (${cleanService.price} ₸)`, user);
   return true;
 }
 

@@ -37,7 +37,7 @@ const FAQS: FaqItem[] = [
   {
     id: 'faq-6',
     question: 'Есть ли напитки и парковка для гостей?',
-    answer: 'Да. Для всех гостей работает бесплатный Lounge-бар с зерновым кофе, чаем и премиальным шотландским виски. Рядом с барбершопом есть городская парковка, а вход находится всего в 3 минутах от станций метро Театральная и Охотный ряд.',
+    answer: 'Да. Для всех гостей работает бесплатный Lounge-бар с зерновым кофе, чаем и премиальным шотландским виски. Рядом с барбершопом есть удобная парковка по пр. Достык, а вход находится в паре минут от метро Абай.',
   },
 ];
 
@@ -124,7 +124,7 @@ export const FaqSection: React.FC<FaqSectionProps> = ({ settings, onStartBooking
 
           <div className="flex items-center gap-2.5">
             <a
-              href={`https://t.me/${(settings?.telegram || '@blade_barbershop').replace('@', '')}`}
+              href={`https://t.me/${(settings?.telegram || '@blade_almaty').replace('@', '')}`}
               target="_blank"
               rel="noreferrer"
               className="px-4 py-2 rounded-xl bg-[#21262d] hover:bg-[#30363d] text-xs font-semibold text-[#f8f5ee] flex items-center gap-1.5 transition-colors"
@@ -134,7 +134,7 @@ export const FaqSection: React.FC<FaqSectionProps> = ({ settings, onStartBooking
             </a>
 
             <a
-              href={`tel:${settings?.phone || '+74951234567'}`}
+              href={`tel:${settings?.phone || '+77771234567'}`}
               className="px-4 py-2 rounded-xl bg-[#21262d] hover:bg-[#30363d] text-xs font-semibold text-[#f8f5ee] flex items-center gap-1.5 transition-colors"
             >
               <Phone className="w-3.5 h-3.5 text-[#c59b27]" />

@@ -106,6 +106,8 @@ CREATE TABLE IF NOT EXISTS public.bookings (
     booking_time TEXT NOT NULL,
     comment TEXT,
     status TEXT DEFAULT 'confirmed' CHECK (status IN ('confirmed', 'cancelled', 'completed')),
+    payment_method TEXT DEFAULT 'kaspi',
+    tips INTEGER DEFAULT 0,
     created_at TIMESTAMPTZ DEFAULT now()
 );
 
@@ -154,6 +156,8 @@ ALTER TABLE public.bookings ADD COLUMN IF NOT EXISTS service_id TEXT;
 ALTER TABLE public.bookings ADD COLUMN IF NOT EXISTS barber_id TEXT;
 ALTER TABLE public.bookings ADD COLUMN IF NOT EXISTS comment TEXT;
 ALTER TABLE public.bookings ADD COLUMN IF NOT EXISTS status TEXT DEFAULT 'confirmed';
+ALTER TABLE public.bookings ADD COLUMN IF NOT EXISTS payment_method TEXT DEFAULT 'kaspi';
+ALTER TABLE public.bookings ADD COLUMN IF NOT EXISTS tips INTEGER DEFAULT 0;
 ALTER TABLE public.bookings ADD COLUMN IF NOT EXISTS created_at TIMESTAMPTZ DEFAULT now();
 
 ALTER TABLE public.site_settings ADD COLUMN IF NOT EXISTS announcement_banner TEXT;

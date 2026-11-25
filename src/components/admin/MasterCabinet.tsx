@@ -71,7 +71,7 @@ export const MasterCabinet: React.FC<MasterCabinetProps> = ({
         <div className="flex items-center gap-3">
           <div className="p-3 rounded-xl bg-[#161b22] border border-[#21262d] text-center">
             <span className="text-[10px] text-[#8b949e] uppercase block">Заработок мастера (45%)</span>
-            <span className="text-base font-bold text-emerald-400">{masterEarnings.toLocaleString('ru-RU')} ₽</span>
+            <span className="text-base font-bold text-emerald-400">{masterEarnings.toLocaleString('ru-RU')} ₸</span>
           </div>
           <div className="p-3 rounded-xl bg-[#161b22] border border-[#21262d] text-center">
             <span className="text-[10px] text-[#8b949e] uppercase block">Обслужено клиентов</span>
@@ -123,7 +123,7 @@ export const MasterCabinet: React.FC<MasterCabinetProps> = ({
                     </span>
                     <span className="flex items-center gap-1">
                       <Scissors className="w-3.5 h-3.5 text-[#c59b27]" />
-                      {b.service_name} ({b.price} ₽)
+                      {b.service_name} ({b.price.toLocaleString('ru-RU')} ₸)
                     </span>
                   </div>
 

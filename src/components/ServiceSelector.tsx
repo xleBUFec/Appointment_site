@@ -135,7 +135,7 @@ export const ServiceSelector: React.FC<ServiceSelectorProps> = ({
                 <div className="pt-3 border-t border-[#21262d] flex items-center justify-between">
                   <div className="flex items-center gap-3">
                     <span className="text-lg font-bold text-[#f8f5ee]">
-                      {service.price.toLocaleString('ru-RU')} ₽
+                      {service.price.toLocaleString('ru-RU')} ₸
                     </span>
                     <span className="flex items-center gap-1 text-xs text-[#8b949e]">
                       <Clock className="w-3.5 h-3.5 text-[#c59b27]" />
@@ -163,7 +163,7 @@ export const ServiceSelector: React.FC<ServiceSelectorProps> = ({
       <div className="flex items-center justify-between pt-4 border-t border-[#21262d]">
         <div className="text-xs text-[#8b949e]">
           {selectedService ? (
-            <span>Выбрано: <strong className="text-[#f8f5ee]">{selectedService.title}</strong> ({selectedService.price} ₽)</span>
+            <span>Выбрано: <strong className="text-[#f8f5ee]">{selectedService.title}</strong> ({selectedService.price.toLocaleString('ru-RU')} ₸)</span>
           ) : (
             <span>Выберите услугу для продолжения</span>
           )}

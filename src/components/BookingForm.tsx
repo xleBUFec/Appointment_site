@@ -1,5 +1,6 @@
 import React, { useState, useEffect } from 'react';
-import { Service, Barber, SiteSettings, UserProfile } from '../types';
+import { Service, Barber, SiteSettings, UserProfile, PaymentMethod } from '../types';
+import { POPULAR_ADDONS, ServiceAddon } from '../lib/mockData';
 import { 
   ShieldCheck, 
   User, 
@@ -14,7 +15,12 @@ import {
   Tag,
   Sparkles,
   Bell,
-  CheckCircle2
+  CheckCircle2,
+  QrCode,
+  CreditCard,
+  Banknote,
+  Heart,
+  Plus
 } from 'lucide-react';
 
 interface BookingFormProps {
@@ -31,6 +37,8 @@ interface BookingFormProps {
     client_email: string;
     comment: string;
     price?: number;
+    payment_method?: PaymentMethod;
+    tips?: number;
   }) => Promise<void>;
   onBack: () => void;
   isLoading: boolean;
@@ -49,10 +57,17 @@ export const BookingForm: React.FC<BookingFormProps> = ({
   isLoading,
 }) => {
   const [name, setName] = useState(currentUser?.name && currentUser.id !== 'guest' ? currentUser.name : '');
-  const [phone, setPhone] = useState(currentUser?.phone ? currentUser.phone : '+7 ');
+  const [phone, setPhone] = useState(currentUser?.phone ? currentUser.phone : '+7 (7');
   const [email, setEmail] = useState(currentUser?.email ? currentUser.email : '');
   const [comment, setComment] = useState('');
   const [reminder, setReminder] = useState(true);
+
+  // Selected Add-ons
+  const [selectedAddons, setSelectedAddons] = useState<string[]>([]);
+
+  // Payment Method & Tips
+  const [paymentMethod, setPaymentMethod] = useState<PaymentMethod>('kaspi');
+  const [selectedTips, setSelectedTips] = useState<number>(0);
 
   // Promo Code State
   const [promoInput, setPromoInput] = useState('');
@@ -64,16 +79,16 @@ export const BookingForm: React.FC<BookingFormProps> = ({
   useEffect(() => {
     if (currentUser && currentUser.id !== 'guest') {
       if (!name && currentUser.name) setName(currentUser.name);
-      if ((phone === '+7 ' || !phone) && currentUser.phone) setPhone(currentUser.phone);
+      if ((phone === '+7 (7' || !phone) && currentUser.phone) setPhone(currentUser.phone);
       if (!email && currentUser.email) setEmail(currentUser.email);
     }
   }, [currentUser]);
 
-  // Format Russian phone number
+  // Phone input handling
   const handlePhoneChange = (e: React.ChangeEvent<HTMLInputElement>) => {
     let val = e.target.value;
     if (!val.startsWith('+7')) {
-      val = '+7 ';
+      val = '+7 (7';
     }
     setPhone(val);
   };
@@ -95,9 +110,30 @@ export const BookingForm: React.FC<BookingFormProps> = ({
     }
   };
 
-  const finalPrice = promoApplied 
+  const toggleAddon = (id: string) => {
+    if (selectedAddons.includes(id)) {
+      setSelectedAddons(selectedAddons.filter(a => a !== id));
+    } else {
+      setSelectedAddons([...selectedAddons, id]);
+    }
+  };
+
+  const addonsTotal = selectedAddons.reduce((sum, id) => {
+    const addon = POPULAR_ADDONS.find(a => a.id === id);
+    return sum + (addon?.price || 0);
+  }, 0);
+
+  const addonsDurationTotal = selectedAddons.reduce((sum, id) => {
+    const addon = POPULAR_ADDONS.find(a => a.id === id);
+    return sum + (addon?.duration_min || 0);
+  }, 0);
+
+  const discountedServicePrice = promoApplied 
     ? Math.round(selectedService.price * (1 - discountPercent / 100))
     : selectedService.price;
+
+  const finalPrice = discountedServicePrice + addonsTotal + selectedTips;
+  const totalDuration = selectedService.duration_min + addonsDurationTotal;
 
   const handleSubmit = async (e: React.FormEvent) => {
     e.preventDefault();
@@ -106,7 +142,7 @@ export const BookingForm: React.FC<BookingFormProps> = ({
       return;
     }
     if (phone.replace(/\D/g, '').length < 11) {
-      setError('Пожалуйста, укажите полный номер телефона');
+      setError('Пожалуйста, укажите полный номер телефона (+7 7XX XXX-XX-XX)');
       return;
     }
     setError('');
@@ -114,6 +150,19 @@ export const BookingForm: React.FC<BookingFormProps> = ({
     let finalComment = comment.trim();
     if (promoApplied) {
       finalComment = `[Промокод ${activePromo} -${discountPercent}%] ${finalComment}`;
+    }
+    if (selectedAddons.length > 0) {
+      const addonNames = selectedAddons
+        .map(id => POPULAR_ADDONS.find(a => a.id === id)?.title)
+        .filter(Boolean)
+        .join(', ');
+      finalComment = `${finalComment} [Допы: ${addonNames}]`.trim();
+    }
+    if (selectedTips > 0) {
+      finalComment = `${finalComment} [Чаевые мастеру: ${selectedTips} ₸]`.trim();
+    }
+    if (paymentMethod === 'kaspi') {
+      finalComment = `${finalComment} [Способ: Kaspi QR]`.trim();
     }
     if (reminder) {
       finalComment = `${finalComment} (Напоминание за 2 часа: Да)`.trim();
@@ -125,6 +174,8 @@ export const BookingForm: React.FC<BookingFormProps> = ({
       client_email: email.trim(),
       comment: finalComment,
       price: finalPrice,
+      payment_method: paymentMethod,
+      tips: selectedTips,
     });
   };
 
@@ -139,29 +190,24 @@ export const BookingForm: React.FC<BookingFormProps> = ({
       
       <div className="grid grid-cols-1 lg:grid-cols-12 gap-8">
         
-        {/* Contact fields (left column) */}
-        <div className="lg:col-span-7 space-y-5">
+        {/* Contact fields & Add-ons (left column) */}
+        <div className="lg:col-span-7 space-y-6">
           <div className="flex items-center justify-between">
             <h3 className="font-serif text-xl font-bold text-[#f8f5ee]">
-              Контактные данные
+              Контактные данные клиента
             </h3>
-            {currentUser && currentUser.id !== 'guest' && (
-              <span className="text-[11px] text-emerald-400 font-medium flex items-center gap-1 bg-emerald-950/40 px-2.5 py-1 rounded-full border border-emerald-500/30">
-                <CheckCircle2 className="w-3.5 h-3.5" />
-                Автозаполнено из профиля
-              </span>
-            )}
+            <span className="text-xs text-[#8b949e]">Шаг 4 из 4</span>
           </div>
 
           {error && (
-            <div className="p-3.5 rounded-xl bg-red-950/40 border border-red-500/30 text-red-300 text-xs sm:text-sm">
+            <div className="p-3.5 rounded-xl bg-red-950/40 border border-red-500/40 text-red-300 text-xs">
               {error}
             </div>
           )}
 
           <div>
             <label className="block text-xs font-semibold text-[#8b949e] uppercase tracking-wider mb-2">
-              Ваше имя <span className="text-[#c59b27]">*</span>
+              Ваше имя и фамилия <span className="text-[#c59b27]">*</span>
             </label>
             <div className="relative">
               <div className="absolute inset-y-0 left-0 pl-3.5 flex items-center pointer-events-none text-[#8b949e]">
@@ -172,7 +218,7 @@ export const BookingForm: React.FC<BookingFormProps> = ({
                 required
                 value={name}
                 onChange={(e) => setName(e.target.value)}
-                placeholder="Иван Петров"
+                placeholder="Алихан Сатпаев"
                 className="w-full bg-[#161b22] border border-[#21262d] rounded-xl pl-10 pr-4 py-3 text-sm text-[#f8f5ee] placeholder-[#484f58] focus:outline-none focus:border-[#c59b27] focus:ring-1 focus:ring-[#c59b27]"
               />
             </div>
@@ -191,15 +237,18 @@ export const BookingForm: React.FC<BookingFormProps> = ({
                 required
                 value={phone}
                 onChange={handlePhoneChange}
-                placeholder="+7 999 123-45-67"
+                placeholder="+7 (777) 123-45-67"
                 className="w-full bg-[#161b22] border border-[#21262d] rounded-xl pl-10 pr-4 py-3 text-sm text-[#f8f5ee] placeholder-[#484f58] focus:outline-none focus:border-[#c59b27] focus:ring-1 focus:ring-[#c59b27]"
               />
             </div>
+            <p className="text-[11px] text-[#8b949e] mt-1">
+              На этот номер придет подтверждение записи и напоминание
+            </p>
           </div>
 
           <div>
             <label className="block text-xs font-semibold text-[#8b949e] uppercase tracking-wider mb-2">
-              Электронная почта (для подтверждения)
+              Электронная почта (для квитанции)
             </label>
             <div className="relative">
               <div className="absolute inset-y-0 left-0 pl-3.5 flex items-center pointer-events-none text-[#8b949e]">
@@ -209,9 +258,132 @@ export const BookingForm: React.FC<BookingFormProps> = ({
                 type="email"
                 value={email}
                 onChange={(e) => setEmail(e.target.value)}
-                placeholder="ivan@example.com"
+                placeholder="alikhan@example.kz"
                 className="w-full bg-[#161b22] border border-[#21262d] rounded-xl pl-10 pr-4 py-3 text-sm text-[#f8f5ee] placeholder-[#484f58] focus:outline-none focus:border-[#c59b27] focus:ring-1 focus:ring-[#c59b27]"
               />
+            </div>
+          </div>
+
+          {/* Quick Add-ons to Haircut */}
+          <div className="p-4 rounded-2xl bg-[#0e1117] border border-[#21262d] space-y-3">
+            <div className="flex items-center justify-between">
+              <span className="text-xs font-semibold text-[#f8f5ee] uppercase tracking-wider flex items-center gap-1.5">
+                <Sparkles className="w-3.5 h-3.5 text-[#c59b27]" />
+                Добавить к визиту (Быстрые допы)
+              </span>
+              <span className="text-[11px] text-[#c59b27] font-medium">По желанию</span>
+            </div>
+
+            <div className="grid grid-cols-1 sm:grid-cols-2 gap-2.5">
+              {POPULAR_ADDONS.map(addon => {
+                const isChecked = selectedAddons.includes(addon.id);
+                return (
+                  <div
+                    key={addon.id}
+                    onClick={() => toggleAddon(addon.id)}
+                    className={`p-3 rounded-xl border transition-all cursor-pointer flex items-center justify-between gap-2.5 ${
+                      isChecked
+                        ? 'bg-[#161b22] border-[#c59b27] text-[#f8f5ee]'
+                        : 'bg-[#161b22]/50 border-[#21262d] text-[#8b949e] hover:border-[#38414e]'
+                    }`}
+                  >
+                    <div className="flex items-center gap-2">
+                      <div className={`w-4 h-4 rounded flex items-center justify-center border transition-all ${
+                        isChecked ? 'bg-[#c59b27] border-[#c59b27] text-black' : 'border-[#30363d]'
+                      }`}>
+                        {isChecked && <Check className="w-3 h-3 stroke-[3]" />}
+                      </div>
+                      <div>
+                        <div className="text-xs font-medium text-[#f8f5ee]">{addon.title}</div>
+                        <div className="text-[10px] text-[#8b949e]">+{addon.duration_min} мин</div>
+                      </div>
+                    </div>
+                    <span className="text-xs font-bold text-[#c59b27]">+{addon.price.toLocaleString('ru-RU')} ₸</span>
+                  </div>
+                );
+              })}
+            </div>
+          </div>
+
+          {/* Payment Method Selector */}
+          <div className="p-4 rounded-2xl bg-[#0e1117] border border-[#21262d] space-y-3">
+            <span className="text-xs font-semibold text-[#f8f5ee] uppercase tracking-wider flex items-center gap-1.5">
+              <CreditCard className="w-3.5 h-3.5 text-[#c59b27]" />
+              Способ оплаты
+            </span>
+
+            <div className="grid grid-cols-3 gap-2">
+              <button
+                type="button"
+                onClick={() => setPaymentMethod('kaspi')}
+                className={`p-3 rounded-xl border text-center transition-all flex flex-col items-center gap-1.5 cursor-pointer ${
+                  paymentMethod === 'kaspi'
+                    ? 'bg-[#e11c38]/10 border-[#e11c38] text-[#f8f5ee] ring-1 ring-[#e11c38]'
+                    : 'bg-[#161b22] border-[#21262d] text-[#8b949e] hover:border-[#38414e]'
+                }`}
+              >
+                <QrCode className="w-5 h-5 text-[#e11c38]" />
+                <span className="text-xs font-bold">Kaspi QR</span>
+                <span className="text-[9px] text-[#e11c38]">Kaspi Pay 0%</span>
+              </button>
+
+              <button
+                type="button"
+                onClick={() => setPaymentMethod('card')}
+                className={`p-3 rounded-xl border text-center transition-all flex flex-col items-center gap-1.5 cursor-pointer ${
+                  paymentMethod === 'card'
+                    ? 'bg-[#c59b27]/10 border-[#c59b27] text-[#f8f5ee] ring-1 ring-[#c59b27]'
+                    : 'bg-[#161b22] border-[#21262d] text-[#8b949e] hover:border-[#38414e]'
+                }`}
+              >
+                <CreditCard className="w-5 h-5 text-[#c59b27]" />
+                <span className="text-xs font-bold">Картой</span>
+                <span className="text-[9px] text-[#8b949e]">Через терминал</span>
+              </button>
+
+              <button
+                type="button"
+                onClick={() => setPaymentMethod('cash')}
+                className={`p-3 rounded-xl border text-center transition-all flex flex-col items-center gap-1.5 cursor-pointer ${
+                  paymentMethod === 'cash'
+                    ? 'bg-[#c59b27]/10 border-[#c59b27] text-[#f8f5ee] ring-1 ring-[#c59b27]'
+                    : 'bg-[#161b22] border-[#21262d] text-[#8b949e] hover:border-[#38414e]'
+                }`}
+              >
+                <Banknote className="w-5 h-5 text-[#c59b27]" />
+                <span className="text-xs font-bold">Наличными</span>
+                <span className="text-[9px] text-[#8b949e]">При посещении</span>
+              </button>
+            </div>
+          </div>
+
+          {/* Tips Selector */}
+          <div className="p-4 rounded-2xl bg-[#0e1117] border border-[#21262d] space-y-2">
+            <div className="flex items-center justify-between">
+              <span className="text-xs font-semibold text-[#8b949e] uppercase tracking-wider flex items-center gap-1.5">
+                <Heart className="w-3.5 h-3.5 text-[#e11c38]" />
+                Чаевые мастеру (по желанию)
+              </span>
+              {selectedTips > 0 && (
+                <span className="text-xs font-bold text-[#c59b27]">+{selectedTips} ₸</span>
+              )}
+            </div>
+
+            <div className="grid grid-cols-4 gap-2">
+              {[0, 500, 1000, 1500].map(amount => (
+                <button
+                  type="button"
+                  key={amount}
+                  onClick={() => setSelectedTips(amount)}
+                  className={`py-2 px-1 rounded-xl text-xs font-semibold transition-all border ${
+                    selectedTips === amount
+                      ? 'bg-[#c59b27] text-black border-[#c59b27]'
+                      : 'bg-[#161b22] text-[#8b949e] border-[#21262d] hover:text-[#f8f5ee]'
+                  }`}
+                >
+                  {amount === 0 ? 'Без чаевых' : `+${amount} ₸`}
+                </button>
+              ))}
             </div>
           </div>
 
@@ -268,7 +440,7 @@ export const BookingForm: React.FC<BookingFormProps> = ({
             />
             <label htmlFor="reminder" className="text-xs text-[#8b949e] flex items-center gap-1.5 cursor-pointer">
               <Bell className="w-3.5 h-3.5 text-[#c59b27]" />
-              Отправить бесплатное напоминание за 2 часа до визита
+              Отправить бесплатное SMS / WhatsApp напоминание за 2 часа
             </label>
           </div>
 
@@ -284,7 +456,7 @@ export const BookingForm: React.FC<BookingFormProps> = ({
                 rows={2}
                 value={comment}
                 onChange={(e) => setComment(e.target.value)}
-                placeholder="Желаемый стиль стрижки, напиток (кофе, виски) или пожелания"
+                placeholder="Пожелания по стилю, любимый кофе или безалкогольный напиток"
                 className="w-full bg-[#161b22] border border-[#21262d] rounded-xl pl-10 pr-4 py-3 text-sm text-[#f8f5ee] placeholder-[#484f58] focus:outline-none focus:border-[#c59b27] focus:ring-1 focus:ring-[#c59b27]"
               />
             </div>
@@ -294,26 +466,42 @@ export const BookingForm: React.FC<BookingFormProps> = ({
 
         {/* Order Summary (right column) */}
         <div className="lg:col-span-5">
-          <div className="p-6 rounded-2xl bg-[#161b22] border border-[#21262d] sticky top-28 space-y-5">
+          <div className="p-6 rounded-2xl bg-[#161b22] border border-[#21262d] sticky top-28 space-y-5 shadow-2xl">
             <h4 className="font-serif text-lg font-bold text-[#f8f5ee] border-b border-[#21262d] pb-3">
-              Детали визита
+              Итог бронирования
             </h4>
 
             {/* Service row */}
             <div>
-              <div className="text-xs text-[#8b949e] mb-1">Выбранная услуга</div>
+              <div className="text-xs text-[#8b949e] mb-1">Основная услуга</div>
               <div className="font-semibold text-base text-[#f8f5ee]">
                 {selectedService.title}
               </div>
               <div className="flex items-center gap-2 text-xs text-[#8b949e] mt-1">
                 <Clock className="w-3.5 h-3.5 text-[#c59b27]" />
-                <span>Длительность: {selectedService.duration_min} минут</span>
+                <span>Время: ~{totalDuration} минут</span>
               </div>
             </div>
 
+            {/* Selected Add-ons summary */}
+            {selectedAddons.length > 0 && (
+              <div className="p-3 rounded-xl bg-[#0e1117] border border-[#21262d] space-y-1.5">
+                <span className="text-[10px] uppercase font-bold text-[#c59b27]">Выбранные допы:</span>
+                {selectedAddons.map(id => {
+                  const a = POPULAR_ADDONS.find(item => item.id === id);
+                  return (
+                    <div key={id} className="flex justify-between text-xs text-[#f8f5ee]">
+                      <span className="truncate">{a?.title}</span>
+                      <span className="text-[#c59b27] font-semibold">+{a?.price} ₸</span>
+                    </div>
+                  );
+                })}
+              </div>
+            )}
+
             {/* Barber row */}
             <div>
-              <div className="text-xs text-[#8b949e] mb-1">Мастер</div>
+              <div className="text-xs text-[#8b949e] mb-1">Барбер</div>
               <div className="font-semibold text-sm text-[#f8f5ee]">
                 {selectedBarber ? selectedBarber.name : 'Любой свободный мастер'}
               </div>
@@ -333,18 +521,31 @@ export const BookingForm: React.FC<BookingFormProps> = ({
               </div>
             </div>
 
+            {/* Payment method badge */}
+            <div className="p-3 rounded-xl bg-[#0e1117] border border-[#21262d] flex items-center justify-between text-xs">
+              <span className="text-[#8b949e]">Способ расчета:</span>
+              <span className="font-bold text-[#f8f5ee] flex items-center gap-1.5">
+                {paymentMethod === 'kaspi' && <QrCode className="w-3.5 h-3.5 text-[#e11c38]" />}
+                {paymentMethod === 'card' && <CreditCard className="w-3.5 h-3.5 text-[#c59b27]" />}
+                {paymentMethod === 'cash' && <Banknote className="w-3.5 h-3.5 text-[#c59b27]" />}
+                <span>
+                  {paymentMethod === 'kaspi' ? 'Kaspi QR' : paymentMethod === 'card' ? 'Карта' : 'Наличные'}
+                </span>
+              </span>
+            </div>
+
             {/* Supabase connection indicator */}
-            <div className="pt-3 border-t border-[#21262d] text-xs flex items-center gap-2 text-[#8b949e]">
+            <div className="pt-2 border-t border-[#21262d] text-xs flex items-center gap-2 text-[#8b949e]">
               <Database className="w-3.5 h-3.5 text-[#c59b27]" />
               <span>
                 {isSupabaseConnected ? 'Онлайн-синхронизация активна' : 'Автономное бронирование'}
               </span>
             </div>
 
-            {/* Total price with discount */}
+            {/* Total price with discount and add-ons */}
             <div className="pt-4 border-t border-[#21262d] flex items-baseline justify-between">
               <div>
-                <span className="text-xs font-semibold text-[#8b949e] block">К оплате на месте:</span>
+                <span className="text-xs font-semibold text-[#8b949e] block">К оплате:</span>
                 {promoApplied && (
                   <span className="text-xs text-emerald-400 font-medium">Скидка -{discountPercent}% учтена</span>
                 )}
@@ -352,11 +553,11 @@ export const BookingForm: React.FC<BookingFormProps> = ({
               <div className="text-right">
                 {promoApplied && (
                   <span className="text-sm line-through text-[#8b949e] block">
-                    {selectedService.price.toLocaleString('ru-RU')} ₽
+                    {(selectedService.price + addonsTotal).toLocaleString('ru-RU')} ₸
                   </span>
                 )}
                 <span className="text-2xl font-bold text-[#c59b27]">
-                  {finalPrice.toLocaleString('ru-RU')} ₽
+                  {finalPrice.toLocaleString('ru-RU')} ₸
                 </span>
               </div>
             </div>
@@ -370,37 +571,33 @@ export const BookingForm: React.FC<BookingFormProps> = ({
               {isLoading ? (
                 <>
                   <Loader2 className="w-5 h-5 animate-spin" />
-                  <span>Бронирование...</span>
+                  <span>Оформление записи...</span>
                 </>
               ) : (
                 <>
-                  <Check className="w-5 h-5 stroke-[2.5]" />
-                  <span>Подтвердить запись</span>
+                  <Check className="w-5 h-5" />
+                  <span>Подтвердить запись ({finalPrice.toLocaleString('ru-RU')} ₸)</span>
                 </>
               )}
             </button>
 
-            <div className="text-center">
-              <span className="text-[11px] text-[#8b949e] inline-flex items-center gap-1">
-                <ShieldCheck className="w-3.5 h-3.5 text-emerald-400" />
-                Оплата после визита картой или наличными
-              </span>
+            <button
+              type="button"
+              onClick={onBack}
+              disabled={isLoading}
+              className="w-full py-2.5 rounded-xl border border-[#21262d] text-xs text-[#8b949e] hover:text-[#f8f5ee] hover:bg-[#21262d] transition-colors"
+            >
+              Вернуться назад к выбору времени
+            </button>
+
+            <div className="flex items-center justify-center gap-1.5 text-[11px] text-[#8b949e] text-center pt-1">
+              <ShieldCheck className="w-3.5 h-3.5 text-[#c59b27]" />
+              <span>Безопасная запись без предоплаты</span>
             </div>
 
           </div>
         </div>
 
-      </div>
-
-      {/* Nav Actions */}
-      <div className="flex items-center justify-between pt-4 border-t border-[#21262d]">
-        <button
-          type="button"
-          onClick={onBack}
-          className="px-5 py-2.5 rounded-xl border border-[#21262d] text-sm text-[#8b949e] hover:text-[#f8f5ee] hover:bg-[#161b22] transition-colors"
-        >
-          Назад к выбору времени
-        </button>
       </div>
 
     </form>

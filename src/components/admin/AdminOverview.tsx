@@ -51,7 +51,7 @@ export const AdminOverview: React.FC<AdminOverviewProps> = ({
             </div>
           </div>
           <div className="text-2xl font-bold text-[#f8f5ee] mb-1">
-            {totalRevenue.toLocaleString('ru-RU')} ₽
+            {totalRevenue.toLocaleString('ru-RU')} ₸
           </div>
           <div className="text-xs text-[#8b949e]">
             {completed.length} завершенных визитов
@@ -66,7 +66,7 @@ export const AdminOverview: React.FC<AdminOverviewProps> = ({
             </div>
           </div>
           <div className="text-2xl font-bold text-[#c59b27] mb-1">
-            {potentialRevenue.toLocaleString('ru-RU')} ₽
+            {potentialRevenue.toLocaleString('ru-RU')} ₸
           </div>
           <div className="text-xs text-[#8b949e]">
             {confirmed.length} подтвержденных записей
@@ -81,7 +81,7 @@ export const AdminOverview: React.FC<AdminOverviewProps> = ({
             </div>
           </div>
           <div className="text-2xl font-bold text-[#f8f5ee] mb-1">
-            {avgCheck.toLocaleString('ru-RU')} ₽
+            {avgCheck.toLocaleString('ru-RU')} ₸
           </div>
           <div className="text-xs text-[#8b949e]">
             С учетом комплекса услуг
@@ -134,7 +134,7 @@ export const AdminOverview: React.FC<AdminOverviewProps> = ({
                 <div className="space-y-0.5">
                   <div className="font-semibold text-sm text-[#f8f5ee]">{b.client_name}</div>
                   <div className="text-[#8b949e]">
-                    {b.service_name} • <span className="text-[#c59b27] font-medium">{b.price} ₽</span>
+                    {b.service_name} • <span className="text-[#c59b27] font-medium">{b.price.toLocaleString('ru-RU')} ₸</span>
                   </div>
                 </div>
 
@@ -175,7 +175,7 @@ export const AdminOverview: React.FC<AdminOverviewProps> = ({
                 </div>
 
                 <div className="text-right">
-                  <div className="text-xs font-bold text-[#c59b27]">{revenue.toLocaleString('ru-RU')} ₽</div>
+                  <div className="text-xs font-bold text-[#c59b27]">{revenue.toLocaleString('ru-RU')} ₸</div>
                   <div className="text-[10px] text-[#8b949e]">{count} записей</div>
                 </div>
               </div>

@@ -1,5 +1,5 @@
 import React from 'react';
-import { Gift, Sparkles, CreditCard, Award, Coffee, ShieldCheck, ArrowRight, UserPlus } from 'lucide-react';
+import { Gift, Sparkles, CreditCard, Award, Coffee, ShieldCheck, ArrowRight, UserPlus, Crown, Zap } from 'lucide-react';
 import { UserProfile } from '../types';
 
 interface LoyaltySectionProps {
@@ -9,6 +9,13 @@ interface LoyaltySectionProps {
 
 export const LoyaltySection: React.FC<LoyaltySectionProps> = ({ currentUser, onOpenAuth }) => {
   const isGuest = !currentUser || currentUser.id === 'guest' || !currentUser.email;
+
+  const tiers = [
+    { name: 'Bronze', cashback: '5%', threshold: 'Начальный', color: 'text-amber-500' },
+    { name: 'Silver', cashback: '7%', threshold: 'от 50 000 ₸', color: 'text-slate-300' },
+    { name: 'Gold Elite', cashback: '10%', threshold: 'от 120 000 ₸', color: 'text-[#e4ba43]' },
+    { name: 'Diamond VIP', cashback: '15%', threshold: 'от 250 000 ₸', color: 'text-[#8ab4f8]' },
+  ];
 
   return (
     <section className="py-20 border-t border-[#21262d] bg-gradient-to-b from-[#0b0e14] via-[#11151c] to-[#0b0e14] relative overflow-hidden">
@@ -33,7 +40,7 @@ export const LoyaltySection: React.FC<LoyaltySectionProps> = ({ currentUser, onO
             </h2>
 
             <p className="text-sm text-[#8b949e] leading-relaxed max-w-xl">
-              Мы ценим постоянство наших гостей. Присоединяйтесь к закрытой программе лояльности, накапливайте бонусные баллы и пользуйтесь эксклюзивными клубными привилегиями.
+              Мы ценим постоянство наших гостей. Присоединяйтесь к закрытой программе лояльности в Алматы, накапливайте бонусы с каждого визита и пользуйтесь эксклюзивными клубными привилегиями.
             </p>
 
             {/* Benefit Highlights */}
@@ -43,8 +50,8 @@ export const LoyaltySection: React.FC<LoyaltySectionProps> = ({ currentUser, onO
                   <Gift className="w-5 h-5" />
                 </div>
                 <div>
-                  <h4 className="font-semibold text-sm text-[#f8f5ee]">300 бонусов на старт</h4>
-                  <p className="text-xs text-[#8b949e] mt-0.5">Начисляем сразу при регистрации (1 бонус = 1 рубль)</p>
+                  <h4 className="font-semibold text-sm text-[#f8f5ee]">1 500 ₸ бонусов на старт</h4>
+                  <p className="text-xs text-[#8b949e] mt-0.5">Начисляем сразу при регистрации (1 бонус = 1 тенге)</p>
                 </div>
               </div>
 
@@ -53,7 +60,7 @@ export const LoyaltySection: React.FC<LoyaltySectionProps> = ({ currentUser, onO
                   <Award className="w-5 h-5" />
                 </div>
                 <div>
-                  <h4 className="font-semibold text-sm text-[#f8f5ee]">5% Кэшбэк с каждого визита</h4>
+                  <h4 className="font-semibold text-sm text-[#f8f5ee]">До 15% Кэшбэк бонусами</h4>
                   <p className="text-xs text-[#8b949e] mt-0.5">Копите баллы и оплачивайте до 50% чека на любые услуги</p>
                 </div>
               </div>
@@ -64,37 +71,53 @@ export const LoyaltySection: React.FC<LoyaltySectionProps> = ({ currentUser, onO
                 </div>
                 <div>
                   <h4 className="font-semibold text-sm text-[#f8f5ee]">Lounge Бар & Напитки</h4>
-                  <p className="text-xs text-[#8b949e] mt-0.5">Эспрессо, травяной чай и выдержанный виски для всех членов клуба</p>
+                  <p className="text-xs text-[#8b949e] mt-0.5">Зерновой эспрессо, чай и выдержанный виски для всех членов клуба</p>
                 </div>
               </div>
 
               <div className="p-4 rounded-2xl bg-[#161b22] border border-[#21262d] flex items-start gap-3.5">
                 <div className="w-10 h-10 rounded-xl bg-[#c59b27]/10 border border-[#c59b27]/30 text-[#c59b27] flex items-center justify-center flex-shrink-0">
-                  <ShieldCheck className="w-5 h-5" />
+                  <Crown className="w-5 h-5" />
                 </div>
                 <div>
-                  <h4 className="font-semibold text-sm text-[#f8f5ee]">Приоритетная запись</h4>
-                  <p className="text-xs text-[#8b949e] mt-0.5">Бронирование топовых слотов в пятницу и субботу без очереди</p>
+                  <h4 className="font-semibold text-sm text-[#f8f5ee]">Приоритетная бронь</h4>
+                  <p className="text-xs text-[#8b949e] mt-0.5">Быстрое бронирование топовых вечерних окон в пятницу и субботу</p>
                 </div>
+              </div>
+            </div>
+
+            {/* Loyalty Tiers strip */}
+            <div className="p-3.5 rounded-2xl bg-[#161b22]/50 border border-[#21262d]">
+              <span className="text-[10px] text-[#8b949e] uppercase font-bold tracking-wider block mb-2">
+                Уровни привилегий клуба:
+              </span>
+              <div className="grid grid-cols-2 sm:grid-cols-4 gap-2">
+                {tiers.map(t => (
+                  <div key={t.name} className="p-2 rounded-xl bg-[#0e1117] border border-[#21262d] text-center">
+                    <div className={`text-xs font-bold ${t.color}`}>{t.name}</div>
+                    <div className="text-xs font-semibold text-[#f8f5ee]">{t.cashback} кэшбэк</div>
+                    <div className="text-[9px] text-[#8b949e]">{t.threshold}</div>
+                  </div>
+                ))}
               </div>
             </div>
 
             {/* Action */}
             {isGuest ? (
-              <div className="pt-4 flex flex-wrap items-center gap-4">
+              <div className="pt-2 flex flex-wrap items-center gap-4">
                 <button
                   onClick={onOpenAuth}
-                  className="gold-button text-black font-bold text-xs sm:text-sm px-6 py-3 rounded-xl shadow-xl flex items-center gap-2 hover:scale-[1.02] active:scale-[0.98] transition-all"
+                  className="gold-button text-black font-bold text-xs sm:text-sm px-6 py-3 rounded-xl shadow-xl flex items-center gap-2 hover:scale-[1.02] active:scale-[0.98] transition-all cursor-pointer"
                 >
                   <UserPlus className="w-4 h-4" />
-                  <span>Создать аккаунт и получить 300 бонусов</span>
+                  <span>Создать аккаунт и получить 1 500 ₸ бонусов</span>
                 </button>
-                <span className="text-xs text-[#8b949e]">Займет меньше минуты</span>
+                <span className="text-xs text-[#8b949e]">Быстрая регистрация по телефону</span>
               </div>
             ) : (
               <div className="pt-2 text-xs text-emerald-400 flex items-center gap-2">
                 <ShieldCheck className="w-4 h-4" />
-                <span>Вы являетесь активным участником клуба. Ваш бонусный баланс: {currentUser?.bonus_points || 300} ₽</span>
+                <span>Вы являетесь активным участником клуба. Ваш бонусный баланс: {currentUser?.bonus_points || 1500} ₸</span>
               </div>
             )}
           </div>
@@ -140,7 +163,7 @@ export const LoyaltySection: React.FC<LoyaltySectionProps> = ({ currentUser, onO
                 <div className="text-right">
                   <span className="text-[9px] uppercase tracking-wider text-[#8b949e] block">Бонусный счет</span>
                   <span className="font-mono font-bold text-sm text-[#c59b27]">
-                    {currentUser && currentUser.id !== 'guest' ? `${currentUser.bonus_points || 300} Б` : '300 БОНУСОВ'}
+                    {currentUser && currentUser.id !== 'guest' ? `${currentUser.bonus_points || 1500} ₸` : '1 500 ₸'}
                   </span>
                 </div>
               </div>

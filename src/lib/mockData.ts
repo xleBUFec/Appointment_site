@@ -1,6 +1,45 @@
 import { Barber, Service, SiteSettings, UserProfile, AuditLog, RegisteredUser } from '../types';
 import { ADMIN_EMAIL, ADMIN_PASSWORD_HASH } from './security';
 
+export interface ServiceAddon {
+  id: string;
+  title: string;
+  price: number;
+  duration_min: number;
+  description: string;
+}
+
+export const POPULAR_ADDONS: ServiceAddon[] = [
+  {
+    id: 'addon-1',
+    title: 'Релакс-массаж головы с тоником',
+    price: 1500,
+    duration_min: 10,
+    description: 'Улучшает микроциркуляцию, снимает стресс и тонизирует кожу головы',
+  },
+  {
+    id: 'addon-2',
+    title: 'Гидрогелевые патчи под глаза',
+    price: 1000,
+    duration_min: 5,
+    description: 'Снимают следы усталости и отеки перед деловой встречей или свиданием',
+  },
+  {
+    id: 'addon-3',
+    title: 'Черная маска-детокс для Т-зоны',
+    price: 1500,
+    duration_min: 10,
+    description: 'Глубокое очищение пор носа от токсинов и черных точек',
+  },
+  {
+    id: 'addon-4',
+    title: 'Премиум укладка матовой глиной Morgan’s',
+    price: 1000,
+    duration_min: 5,
+    description: 'Надежная фиксация и благородный матовый финиш без блеска',
+  },
+];
+
 export const INITIAL_SITE_SETTINGS: SiteSettings = {
   hero_title: 'Искусство точной стрижки и безупречного стиля',
   hero_subtitle: 'Мастера с многолетним опытом, традиционное бритье опасной бритвой, премиальная косметика и атмосфера настоящего мужского клуба.',
@@ -9,13 +48,13 @@ export const INITIAL_SITE_SETTINGS: SiteSettings = {
   announcement_active: true,
   promo_code: 'FIRST20',
   promo_discount_percent: 20,
-  address: 'г. Москва, ул. Большая Дмитровка, д. 12',
-  phone: '+7 (495) 123-45-67',
+  address: 'г. Алматы, пр. Достык, д. 42',
+  phone: '+7 (777) 123-45-67',
   work_hours: '10:00 — 22:00 ежедневно',
-  telegram: '@blade_barbershop',
-  seo_title: 'BLADE & CO. | Премиум Барбершоп в центре Москвы',
-  seo_description: 'Классические мужские стрижки, моделирование бороды и бритье опасной бритвой. Онлайн-запись 24/7.',
-  seo_keywords: 'барбершоп, мужская стрижка, борода, бритье, Москва, Большая Дмитровка',
+  telegram: '@blade_almaty',
+  seo_title: 'BLADE & CO. | Премиум Барбершоп в Алматы (Достык)',
+  seo_description: 'Классические мужские стрижки, моделирование бороды и королевское бритье в Алматы. Оплата Kaspi QR. Онлайн-запись 24/7.',
+  seo_keywords: 'барбершоп алматы, мужская стрижка алматы, борода алматы, kaspi qr, достык, стрижка алматы',
 };
 
 export const DEFAULT_ADMIN_EMAIL = ADMIN_EMAIL;
@@ -33,7 +72,7 @@ export const INITIAL_REGISTERED_USERS: RegisteredUser[] = [
   {
     id: 'user-admin-thunderwoltt',
     name: 'Администратор (thunderwoltt)',
-    phone: '+7 999 777-88-99',
+    phone: '+7 777 999-88-77',
     email: ADMIN_EMAIL,
     password: ADMIN_PASSWORD_HASH,
     role: 'admin',
@@ -43,8 +82,8 @@ export const INITIAL_REGISTERED_USERS: RegisteredUser[] = [
   {
     id: 'user-master-1',
     name: 'Александр "Клык" Романов',
-    phone: '+7 999 111-22-33',
-    email: 'romanov@blade-co.ru',
+    phone: '+7 777 111-22-33',
+    email: 'romanov@blade-co.kz',
     password: 'password123',
     role: 'master',
     barber_id: 'barber-1',
@@ -53,12 +92,12 @@ export const INITIAL_REGISTERED_USERS: RegisteredUser[] = [
   },
   {
     id: 'user-client-1',
-    name: 'Иван Петров',
-    phone: '+7 999 123-45-67',
-    email: 'ivan@example.com',
+    name: 'Алихан Сатпаев',
+    phone: '+7 777 123-45-67',
+    email: 'alikhan@example.kz',
     password: 'password123',
     role: 'client',
-    bonus_points: 650,
+    bonus_points: 2500,
     avatar_url: 'https://images.unsplash.com/photo-1535713875002-d1d0cf377fde?auto=format&fit=crop&w=400&q=80',
     created_at: new Date().toISOString(),
   },
@@ -73,7 +112,7 @@ export const INITIAL_AUDIT_LOGS: AuditLog[] = [
     user_name: 'thunderwoltt (Главный Админ)',
     user_role: 'admin',
     action: 'Обновление цен',
-    details: 'Услуга «Комплекс Шеф» установлена цена 3 800 ₽',
+    details: 'Услуга «Комплекс Шеф» установлена цена 12 000 ₸',
   },
   {
     id: 'log-2',
@@ -89,7 +128,7 @@ export const INITIAL_AUDIT_LOGS: AuditLog[] = [
     user_name: 'Александр "Клык"',
     user_role: 'master',
     action: 'Завершение визита',
-    details: 'Запись #bk-7821 выполнена успешно',
+    details: 'Запись #bk-7821 выполнена успешно (Оплата Kaspi QR)',
   },
 ];
 
@@ -131,7 +170,7 @@ export const INITIAL_SERVICES: Service[] = [
     id: 'service-1',
     title: 'Классическая мужская стрижка',
     description: 'Мытье головы, персональная стрижка ножницами и машинкой, укладка премиум стайлингом.',
-    price: 2500,
+    price: 8000,
     duration_min: 50,
     category: 'hair',
     popular: true,
@@ -141,7 +180,7 @@ export const INITIAL_SERVICES: Service[] = [
     id: 'service-2',
     title: 'Моделирование бороды и усов',
     description: 'Четкие контуры, распаривание горячим компрессом, уход органическими маслами.',
-    price: 1800,
+    price: 6000,
     duration_min: 40,
     category: 'beard',
     popular: true,
@@ -151,7 +190,7 @@ export const INITIAL_SERVICES: Service[] = [
     id: 'service-3',
     title: 'Комплекс "Шеф": Стрижка + Борода',
     description: 'Полное преображение: стрижка волос, моделирование бороды и бритье шейной зоны опасным лезвием.',
-    price: 3800,
+    price: 12000,
     duration_min: 75,
     category: 'combo',
     popular: true,
@@ -161,7 +200,7 @@ export const INITIAL_SERVICES: Service[] = [
     id: 'service-4',
     title: 'Королевское бритье опасной бритвой',
     description: 'Традиционный ритуал: распаривающие полотенца, пена из барсучьего помазка и холодный компресс.',
-    price: 2200,
+    price: 7000,
     duration_min: 45,
     category: 'beard',
     popular: false,
@@ -171,7 +210,7 @@ export const INITIAL_SERVICES: Service[] = [
     id: 'service-5',
     title: 'Премиум СПА-уход для лица',
     description: 'Очищающая маска с вулканической глиной, распаривание, массаж лица и сыворотка.',
-    price: 1600,
+    price: 6000,
     duration_min: 30,
     category: 'spa',
     popular: false,
@@ -181,7 +220,7 @@ export const INITIAL_SERVICES: Service[] = [
     id: 'service-6',
     title: 'Камуфляж седины волос и бороды',
     description: 'Естественное тонирование седых волос без эффекта окрашенности за 15 минут.',
-    price: 1500,
+    price: 5000,
     duration_min: 30,
     category: 'hair',
     popular: false,

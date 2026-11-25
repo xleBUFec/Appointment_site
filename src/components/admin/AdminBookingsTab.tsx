@@ -159,7 +159,7 @@ export const AdminBookingsTab: React.FC<AdminBookingsTabProps> = ({
                     </span>
                     <span className="flex items-center gap-1">
                       <Scissors className="w-3.5 h-3.5 text-[#c59b27]" />
-                      {booking.service_name} • <strong className="text-[#f8f5ee]">{booking.price} ₽</strong>
+                      {booking.service_name} • <strong className="text-[#f8f5ee]">{booking.price.toLocaleString('ru-RU')} ₸</strong>
                     </span>
                     <span className="flex items-center gap-1">
                       <User className="w-3.5 h-3.5 text-[#c59b27]" />

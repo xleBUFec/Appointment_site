@@ -100,7 +100,7 @@ export const AdminBookingsView: React.FC<AdminBookingsViewProps> = ({
           </div>
           <div className="p-3.5 rounded-xl bg-[#0e1117] border border-[#21262d]">
             <span className="text-[11px] text-[#8b949e] uppercase tracking-wider block">Ожидаемая выручка</span>
-            <span className="text-xl font-bold text-[#c59b27]">{totalRevenue.toLocaleString('ru-RU')} ₽</span>
+            <span className="text-xl font-bold text-[#c59b27]">{totalRevenue.toLocaleString('ru-RU')} ₸</span>
           </div>
           <div className="col-span-2 sm:col-span-1 p-3.5 rounded-xl bg-[#0e1117] border border-[#21262d]">
             <span className="text-[11px] text-[#8b949e] uppercase tracking-wider block">Источник данных</span>
@@ -163,7 +163,7 @@ export const AdminBookingsView: React.FC<AdminBookingsViewProps> = ({
                     </span>
                     <span className="flex items-center gap-1">
                       <Scissors className="w-3.5 h-3.5 text-[#c59b27]" />
-                      {b.service_name} ({b.price} ₽)
+                      {b.service_name} ({b.price.toLocaleString('ru-RU')} ₸)
                     </span>
                     <span className="flex items-center gap-1">
                       <User className="w-3.5 h-3.5 text-[#c59b27]" />
