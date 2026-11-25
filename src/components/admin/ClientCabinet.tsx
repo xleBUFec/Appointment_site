@@ -16,11 +16,23 @@ export const ClientCabinet: React.FC<ClientCabinetProps> = ({
   onRefresh,
   onBookAgain,
 }) => {
-  // Filter bookings for this client
-  const myBookings = bookings.filter(b => 
-    b.client_phone === currentUser.phone ||
-    b.client_name.toLowerCase().includes(currentUser.name.toLowerCase().split(' ')[0])
-  );
+  // Filter bookings for this client (по email, телефону или имени)
+  const myBookings = bookings.filter(b => {
+    const emailMatch = Boolean(
+      currentUser.email && 
+      b.client_email && 
+      b.client_email.toLowerCase().trim() === currentUser.email.toLowerCase().trim()
+    );
+    const cleanUserPhone = currentUser.phone ? currentUser.phone.replace(/\D/g, '') : '';
+    const cleanBookingPhone = b.client_phone ? b.client_phone.replace(/\D/g, '') : '';
+    const phoneMatch = Boolean(cleanUserPhone && cleanBookingPhone && cleanUserPhone === cleanBookingPhone);
+    const nameMatch = Boolean(
+      currentUser.name && 
+      b.client_name && 
+      b.client_name.toLowerCase().trim() === currentUser.name.toLowerCase().trim()
+    );
+    return emailMatch || phoneMatch || nameMatch;
+  });
 
   const activeBookings = myBookings.filter(b => b.status === 'confirmed');
   const pastBookings = myBookings.filter(b => b.status !== 'confirmed');

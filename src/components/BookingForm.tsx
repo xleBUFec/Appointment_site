@@ -30,6 +30,7 @@ interface BookingFormProps {
     client_phone: string;
     client_email: string;
     comment: string;
+    price?: number;
   }) => Promise<void>;
   onBack: () => void;
   isLoading: boolean;
@@ -123,6 +124,7 @@ export const BookingForm: React.FC<BookingFormProps> = ({
       client_phone: phone.trim(),
       client_email: email.trim(),
       comment: finalComment,
+      price: finalPrice,
     });
   };
 

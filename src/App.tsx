@@ -107,6 +107,7 @@ export function App() {
     client_phone: string;
     client_email: string;
     comment: string;
+    price?: number;
   }) => {
     if (!selectedService) return;
     setIsSubmitting(true);
@@ -123,7 +124,7 @@ export function App() {
         barber_id: barberId,
         service_name: selectedService.title,
         barber_name: barberName,
-        price: selectedService.price,
+        price: formData.price || selectedService.price,
         booking_date: selectedDate,
         booking_time: selectedTime,
         comment: formData.comment,
